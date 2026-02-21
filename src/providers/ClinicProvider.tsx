@@ -5,7 +5,7 @@ import { AdminService } from '../services/api/admin.service';
 import { useAuth } from '../hooks/useAuth';
 import { ClinicContext } from '../context/ClinicContext';
 import toast from 'react-hot-toast';
-import type { Clinic, ClinicSettings, ClinicUsage, SubscriptionStatus, UsageStats } from '../types/clinic.types';
+import type { Clinic, ClinicSettingsnew, ClinicUsage, SubscriptionStatus, UsageStats } from '../types/clinic.types';
 
 interface ClinicProviderProps {
   children: ReactNode;
@@ -52,7 +52,7 @@ const TIER_LIMITS = {
 export const ClinicProvider: React.FC<ClinicProviderProps> = ({ children }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [clinic, setClinic] = useState<ClinicSettings | null>(null);
+  const [clinic, setClinic] = useState<ClinicSettingsnew | null>(null);
 
   // Fetch clinic data
   const { 
@@ -60,7 +60,7 @@ export const ClinicProvider: React.FC<ClinicProviderProps> = ({ children }) => {
     isLoading, 
     error, 
     refetch 
-  } = useQuery<ClinicSettings, Error>(
+  } = useQuery<ClinicSettingsnew, Error>(
     ['clinic', user?.clinic_id],
     async () => {
       if (!user?.clinic_id) throw new Error('No clinic ID available');
@@ -88,7 +88,7 @@ export const ClinicProvider: React.FC<ClinicProviderProps> = ({ children }) => {
   );
 
   // Update clinic mutation
-  const updateMutation = useMutation<ClinicSettings, Error, Partial<Clinic>>(
+  const updateMutation = useMutation<ClinicSettingsnew, Error, Partial<Clinic>>(
     async (data) => {
       if (!user?.clinic_id) throw new Error('No clinic ID available');
       return AdminService.updateClinic(user.clinic_id, data);

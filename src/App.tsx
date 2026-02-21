@@ -166,6 +166,9 @@ import ProtectedRoute from './components/layout/ProtectedRoute';
 
 // Pages
 import Dashboard from './pages/Dashboard';
+import FrontdeskDashboard from './pages/frontdesk/FrontdeskDashboard';
+import FrontdeskWorkbench from './pages/frontdesk/FrontdeskWorkbench';
+import QueueControl from './pages/frontdesk/QueueControl';
 import PatientList from './pages/patients/PatientList';
 import PatientDetails from './pages/patients/PatientDetails';
 import PatientBooking from './pages/patients/PatientBooking';
@@ -177,7 +180,7 @@ import LabDashboard from './pages/lab/LabDashboard';
 import TestResults from './pages/lab/TestResults';
 import PharmacyDashboard from './pages/pharmacy/PharmacyDashboard';
 import DispenseMedicine from './pages/pharmacy/DispenseMedicine';
-import  ClinicSettings from './pages/admin/ClinicSettings';
+import ClinicSettings from './pages/admin/ClinicSettings';
 import UserManagement from './pages/admin/UserManagement';
 import { AuthProvider } from './providers/AuthProvider';
 import { ClinicProvider } from './providers/ClinicProvider';
@@ -201,17 +204,17 @@ function AppContent() {
     );
   }
 
-if (!user) {
-  return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register-clinic" element={<RegisterClinic />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/unauthorized" element={<Unauthorized />} />
-      <Route path="*" element={<Navigate to="/login" />} />
-    </Routes>
-  );
-}
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register-clinic" element={<RegisterClinic />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -222,84 +225,101 @@ if (!user) {
           <Routes>
             {/* Dashboard */}
             <Route path="/" element={
-              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor', 'lab_staff', 'pharmacist']}>
+              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor', 'lab_staff', 'pharmacist', 'super_admin']}>
                 <Dashboard />
               </ProtectedRoute>
             } />
 
-            
+            <Route path="/frontdesk" element={
+              <ProtectedRoute allowedRoles={['clinic_admin', 'super_admin']}>
+                <FrontdeskDashboard />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/frontdesk/workbench" element={
+              <ProtectedRoute allowedRoles={['clinic_admin', 'super_admin']}>
+                <FrontdeskWorkbench />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/frontdesk/queue" element={
+              <ProtectedRoute allowedRoles={['clinic_admin', 'super_admin']}>
+                <QueueControl />
+              </ProtectedRoute>
+            } />
+
 
             {/* Patient Routes */}
             <Route path="/patients" element={
-              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor']}>
+              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor', 'super_admin']}>
                 <PatientList />
               </ProtectedRoute>
             } />
             <Route path="/patients/:id" element={
-              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor']}>
+              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor', 'super_admin']}>
                 <PatientDetails />
               </ProtectedRoute>
             } />
             <Route path="/patients/new" element={
-              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor']}>
+              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor', 'super_admin']}>
                 <PatientBooking />
               </ProtectedRoute>
             } />
             <Route path="/patients/:id/book" element={
-              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor']}>
+              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor', 'super_admin']}>
                 <PatientBooking />
               </ProtectedRoute>
             } />
 
             {/* Appointment Routes */}
             <Route path="/appointments" element={
-              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor', 'patient']}>
+              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor', 'patient', 'super_admin']}>
                 <AppointmentCalendar />
               </ProtectedRoute>
             } />
             <Route path="/appointments/:id" element={
-              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor', 'patient']}>
+              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor', 'patient', 'super_admin']}>
                 <AppointmentDetails />
               </ProtectedRoute>
             } />
             <Route path="/appointments/book" element={
-              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor', 'patient']}>
+              <ProtectedRoute allowedRoles={['clinic_admin', 'doctor', 'patient', 'super_admin']}>
                 <PatientBooking />
               </ProtectedRoute>
             } />
 
             {/* Doctor Routes */}
             <Route path="/doctor" element={
-              <ProtectedRoute allowedRoles={['doctor']}>
+              <ProtectedRoute allowedRoles={['doctor', 'super_admin']}>
                 <DoctorWorkbench />
               </ProtectedRoute>
             } />
             <Route path="/doctor/visit/:id" element={
-              <ProtectedRoute allowedRoles={['doctor']}>
+              <ProtectedRoute allowedRoles={['doctor', 'super_admin']}>
                 <PatientVisit />
               </ProtectedRoute>
             } />
 
             {/* Lab Routes */}
             <Route path="/lab" element={
-              <ProtectedRoute allowedRoles={['lab_staff', 'doctor']}>
+              <ProtectedRoute allowedRoles={['lab_staff', 'doctor', 'super_admin']}>
                 <LabDashboard />
               </ProtectedRoute>
             } />
             <Route path="/lab/results/:id" element={
-              <ProtectedRoute allowedRoles={['lab_staff']}>
+              <ProtectedRoute allowedRoles={['lab_staff', 'super_admin']}>
                 <TestResults />
               </ProtectedRoute>
             } />
 
             {/* Pharmacy Routes */}
             <Route path="/pharmacy" element={
-              <ProtectedRoute allowedRoles={['pharmacist', 'clinic_admin']}>
+              <ProtectedRoute allowedRoles={['pharmacist', 'clinic_admin', 'super_admin']}>
                 <PharmacyDashboard />
               </ProtectedRoute>
             } />
             <Route path="/pharmacy/dispense" element={
-              <ProtectedRoute allowedRoles={['pharmacist']}>
+              <ProtectedRoute allowedRoles={['pharmacist', 'super_admin']}>
                 <DispenseMedicine />
               </ProtectedRoute>
             } />
@@ -323,7 +343,7 @@ if (!user) {
 
             {/* Unauthorized */}
             <Route path="/unauthorized" element={<Unauthorized />} />
-            
+
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
@@ -349,7 +369,7 @@ function App() {
         <AuthProvider>
           <ClinicProvider> {/* ClinicProvider inside AuthProvider */}
             <AppContent />
-            <Toaster 
+            <Toaster
               position="top-right"
               toastOptions={{
                 duration: 4000,

@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { PharmacyService } from '../../services/api/pharmacy.service';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import StatusBadge from '../../components/common/StatusBadge';
-import SearchInput from '../../components/common/SearchInput';
+import SearchInput from '../../components/common/SearchBar';
 import Pagination from '../../components/common/Pagination';
 import toast from 'react-hot-toast';
 import {
@@ -14,8 +14,8 @@ import {
   XCircleIcon,
   PrinterIcon,
   EyeIcon,
-  FilterIcon,
-  DownloadIcon,
+  FunnelIcon,
+  ArrowDownCircleIcon,
 } from '@heroicons/react/24/outline';
 
 interface Prescription {
@@ -173,7 +173,7 @@ const PrescriptionManagement: React.FC = () => {
             onClick={() => setShowFilters(!showFilters)}
             className="px-4 py-2 border rounded-lg hover:bg-gray-50 flex items-center"
           >
-            <FilterIcon className="h-5 w-5 mr-2" />
+            <FunnelIcon className="h-5 w-5 mr-2" />
             Filters
           </button>
         </div>
@@ -440,7 +440,7 @@ const PrescriptionManagement: React.FC = () => {
                   }}
                   className="px-4 py-2 border rounded-lg hover:bg-gray-50 flex items-center"
                 >
-                  <DownloadIcon className="h-5 w-5 mr-2" />
+                  <ArrowDownCircleIcon className="h-5 w-5 mr-2" />
                   Download
                 </button>
                 {(selectedPrescription.status === 'pending' || selectedPrescription.status === 'processing') && (

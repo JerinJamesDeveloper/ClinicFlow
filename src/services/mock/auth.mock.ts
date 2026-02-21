@@ -54,6 +54,16 @@ export const mockUsers: User[] = [
     created_at: '2024-01-01T00:00:00Z',
     last_login: '2024-03-14T14:30:00Z',
   },
+    {
+    id: 6,
+    clinic_id: 1,
+    name: 'Patient Demo',
+    email: 'jerin@clinic.com',
+    role: 'super_admin',
+    is_active: true,
+    created_at: '2024-01-01T00:00:00Z',
+    last_login: '2024-03-14T14:30:00Z',
+  },
 ];
 
 // Mock login function
