@@ -1,6 +1,6 @@
 // src/hooks/useWebSocket.ts
 import { useEffect } from 'react';
-import { websocketService } from '../services/websocket/socket.service';
+import { websocketService, type WebSocketMessage } from '../services/websocket/socket.service';
 import { useAuth } from './useAuth';
 
 export const useWebSocket = (
@@ -12,8 +12,18 @@ export const useWebSocket = (
   useEffect(() => {
     if (!user) return;
 
-    const wrappedHandler = (message: MessageEventInit) => {
-      handler(message.data);
+    const wrappedHandler = (message: WebSocketMessage) => {
+      // `message.data` is a string in our transport; most events send JSON.
+      if (typeof message.data !== 'string') {
+        handler(message.data);
+        return;
+      }
+
+      try {
+        handler(JSON.parse(message.data));
+      } catch {
+        handler(message.data);
+      }
     };
 
     websocketService.on(eventType, wrappedHandler);

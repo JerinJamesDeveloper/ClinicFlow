@@ -1,7 +1,7 @@
 // src/services/websocket/socket.service.ts
 import { environment } from '../config/environment';
 
-type WebSocketMessage = {
+export type WebSocketMessage = {
   type: 'appointment_update' | 'lab_result_ready' | 'prescription_issued' | 'prescription_dispensed' | 'notification';
   data: string;
   timestamp: string;

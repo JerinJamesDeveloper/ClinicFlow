@@ -1,103 +1,123 @@
-import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+// src/components/layout/Sidebar.tsx
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import { isDevAdmin } from '../../utils/roles';
 import {
   HomeIcon,
   UsersIcon,
   CalendarIcon,
-  ClipboardDocumentCheckIcon,
   BeakerIcon,
-  CircleStackIcon,
-  ChartBarIcon,
-  WrenchScrewdriverIcon,
-  QueueListIcon,
-  ClockIcon,
   DocumentTextIcon,
   ShoppingBagIcon,
   Cog6ToothIcon,
   ClipboardDocumentListIcon,
-  PowerIcon,
+  HeartIcon,
 } from '@heroicons/react/24/outline';
-import { useAuth } from '../../hooks/useAuth';
-import clsx from 'clsx';
+
+const navigation = [
+  { name: 'Dashboard', href: '/', icon: HomeIcon, roles: ['admin', 'doctor', 'lab_staff', 'pharmacist', 'front_desk'] },
+  { name: 'Front Bench', href: '/front-bench', icon: ClipboardDocumentListIcon, roles: ['admin', 'front_desk'] },
+  { name: 'Patients', href: '/patients', icon: UsersIcon, roles: ['admin', 'doctor', 'front_desk'] },
+  { name: 'Appointments', href: '/appointments', icon: CalendarIcon, roles: ['admin', 'doctor', 'front_desk'] },
+  { name: 'Doctor Workbench', href: '/doctor', icon: ClipboardDocumentListIcon, roles: ['admin', 'doctor'] },
+  { name: 'Lab Tests', href: '/lab', icon: BeakerIcon, roles: ['admin', 'lab_staff', 'doctor'] },
+  { name: 'Prescriptions', href: '/pharmacy', icon: DocumentTextIcon, roles: ['admin', 'pharmacist'] },
+  { name: 'Pharmacy', href: '/pharmacy/dispense', icon: ShoppingBagIcon, roles: ['admin', 'pharmacist'] },
+  { name: 'Admin', href: '/admin', icon: Cog6ToothIcon, roles: ['clinic_admin', 'super_admin'] },
+];
 
 const Sidebar: React.FC = () => {
-  const { user, logout } = useAuth();
-  const location = useLocation();
+  const { user, hasRole } = useAuth();
 
-  const navigation = [
-    { name: 'Dashboard', href: '/', icon: HomeIcon, roles: ['admin', 'doctor', 'lab_staff', 'pharmacist', 'super_admin'] },
-    { name: 'Frontdesk Dashboard', href: '/frontdesk', icon: ChartBarIcon, roles: ['clinic_admin', 'super_admin'] },
-    { name: 'Frontdesk Workbench', href: '/frontdesk/workbench', icon: ClipboardDocumentCheckIcon, roles: ['clinic_admin', 'super_admin'] },
-    { name: 'Queue Control', href: '/frontdesk/queue', icon: QueueListIcon, roles: ['clinic_admin', 'super_admin'] },
-    { name: 'Patients', href: '/patients', icon: UsersIcon, roles: ['admin', 'doctor', 'clinic_admin', 'super_admin'] },
-    { name: 'Appointments', href: '/appointments', icon: CalendarIcon, roles: ['admin', 'doctor', 'clinic_admin', 'super_admin'] },
-    { name: 'Doctor Workbench', href: '/doctor', icon: ClipboardDocumentListIcon, roles: ['doctor', 'super_admin'] },
-    { name: 'Inventory', href: '/inventory', icon: ShoppingBagIcon, roles: ['admin', 'pharmacist', 'super_admin'] },
-    { name: 'Lab Management', href: '/lab', icon: BeakerIcon, roles: ['admin', 'lab_staff', 'super_admin'] },
-    { name: 'Records', href: '/records', icon: DocumentTextIcon, roles: ['admin', 'doctor', 'super_admin'] },
-    { name: 'Admin', href: '/admin', icon: WrenchScrewdriverIcon, roles: ['admin', 'super_admin'] },
-    { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, roles: ['admin', 'doctor', 'lab_staff', 'pharmacist', 'super_admin'] },
-  ];
-
-  const filteredNavigation = navigation.filter(
-    (item) => !item.roles || item.roles.includes(user?.role as string)
-  );
+  const filteredNav = isDevAdmin(user)
+    ? navigation
+    : navigation.filter(item => item.roles.some(role => hasRole([role])));
 
   return (
-    <div className="flex flex-col w-64 bg-white border-r border-gray-100 h-full shadow-sm">
-      <div className="flex items-center h-16 px-6 border-b border-gray-50">
-        <span className="text-xl font-black text-primary-950 tracking-tighter italic">CLINI<span className="text-primary-600">FLOW</span></span>
-      </div>
+    <aside className="hidden md:flex md:w-72 md:flex-col fixed inset-y-0 left-0 z-50">
+      {/* Gradient Background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-white via-surface-50 to-surface-100" />
+      
+      {/* Decorative Elements */}
+      <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-primary-500/10 to-accent-500/5 rounded-br-full blur-3xl" />
+      <div className="absolute bottom-0 right-0 w-48 h-48 bg-primary-500/5 rounded-full blur-3xl" />
+      
+      {/* Content */}
+      <div className="relative flex flex-col flex-1 pt-6 pb-4 overflow-y-auto">
+        {/* Logo */}
+        <div className="flex items-center gap-3 px-6 mb-8">
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-lg shadow-primary-500/30">
+            <HeartIcon className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-primary-600 to-primary-700 bg-clip-text text-transparent">
+              ClinicFlow
+            </h1>
+            <p className="text-xs text-surface-500">Healthcare Platform</p>
+          </div>
+        </div>
 
-      <div className="flex-1 px-4 py-6 overflow-y-auto custom-scrollbar">
-        <nav className="space-y-1">
-          {filteredNavigation.map((item) => {
-            const isActive = location.pathname === item.href;
-            return (
-              <NavLink
-                key={item.name}
-                to={item.href}
-                className={clsx(
-                  'group flex items-center px-4 py-3 text-sm font-bold rounded-2xl transition-all duration-200',
+        {/* Divider */}
+        <div className="mx-6 mb-6 h-px bg-gradient-to-r from-transparent via-surface-200 to-transparent" />
+
+        {/* Navigation */}
+        <nav className="flex-1 px-4 space-y-1.5">
+          {filteredNav.map((item, index) => (
+            <NavLink
+              key={item.name}
+              to={item.href}
+              className={({ isActive }) =>
+                `group flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
                   isActive
-                    ? 'bg-primary-50 text-primary-950 shadow-sm'
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                )}
-              >
-                <item.icon
-                  className={clsx(
-                    'mr-3 h-5 w-5 transition-colors',
-                    isActive ? 'text-primary-600' : 'text-gray-400 group-hover:text-gray-500'
+                    ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/25'
+                    : 'text-surface-600 hover:bg-white hover:text-surface-900 hover:shadow-md hover:shadow-surface-200/50'
+                }`
+              }
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon
+                    className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${
+                      isActive ? '' : 'group-hover:scale-110'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <span className="truncate">{item.name}</span>
+                  
+                  {/* Active Indicator */}
+                  {isActive && (
+                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-sm" />
                   )}
-                  aria-hidden="true"
-                />
-                {item.name}
-              </NavLink>
-            );
-          })}
+                </>
+              )}
+            </NavLink>
+          ))}
         </nav>
-      </div>
 
-      <div className="p-4 border-t border-gray-50">
-        <div className="flex items-center px-4 py-3 bg-gray-50 rounded-2xl">
-          <div className="flex-shrink-0">
-            <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xs">
-              {user?.name?.charAt(0)}
+        {/* Bottom Section */}
+        <div className="mt-auto px-4 pt-4">
+          <div className="mx-4 p-4 rounded-xl bg-gradient-to-br from-surface-50 to-white border border-surface-100 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-400 to-primary-500 flex items-center justify-center shadow-md">
+                <span className="text-white font-semibold text-sm">
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-surface-900 truncate">
+                  {user?.name || 'User'}
+                </p>
+                <p className="text-xs text-surface-500 truncate">
+                  {user?.role?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Staff'}
+                </p>
+              </div>
             </div>
           </div>
-          <div className="ml-3 min-w-0 flex-1">
-            <p className="text-sm font-bold text-gray-900 truncate">{user?.name}</p>
-            <p className="text-[10px] text-primary-600 font-bold uppercase tracking-widest truncate">{user?.role?.replace('_', ' ')}</p>
-          </div>
-          <button
-            onClick={logout}
-            className="ml-auto p-1 text-gray-400 hover:text-red-600 transition-colors"
-          >
-            <PowerIcon className="h-5 w-5" />
-          </button>
         </div>
       </div>
-    </div>
+    </aside>
   );
 };
 

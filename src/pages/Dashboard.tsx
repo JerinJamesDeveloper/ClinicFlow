@@ -173,6 +173,13 @@ const Dashboard: React.FC = () => {
 
   // Define role-specific routes
   const roleRoutes = {
+    admin: (
+      <Routes>
+        <Route path="/" element={<AdminDashboard />} />
+        <Route path="/admin/*" element={<AdminDashboard />} />
+      </Routes>
+    ),
+    front_desk: <Navigate to="/front-bench" replace />,
     doctor: (
       <Routes>
         <Route path="/" element={<DoctorDashboard />} />

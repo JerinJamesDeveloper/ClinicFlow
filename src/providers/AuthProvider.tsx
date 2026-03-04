@@ -6,6 +6,7 @@ import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import type { BaseErrorResponse, ValidationErrorResponse, AuthError } from '../types/error.types';
 import { mockLogin } from '../services/mock/auth.mock';
+import { userHasAnyRole } from '../utils/roles';
 
 
 interface AuthProviderProps {
@@ -160,7 +161,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const hasRole = useCallback((roles: string[]) => {
     if (!user) return false;
-    return roles.includes(user.role);
+    return userHasAnyRole(roles, user);
   }, [user]);
 
   const refreshUser = useCallback(() => {
@@ -182,7 +183,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     hasRole,
     refreshUser,
-  }), [user, isLoading, login, logout, hasRole, refreshUser]);
+    mockLogin
+  }), [user, isLoading, login, logout, hasRole, refreshUser,  mockLogin]);
 
   return (
     <AuthContext.Provider value={contextValue}>

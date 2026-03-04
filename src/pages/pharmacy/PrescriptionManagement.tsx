@@ -1,176 +1,203 @@
 // src/pages/pharmacy/PrescriptionManagement.tsx
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { PharmacyService } from '../../services/api/pharmacy.service';
-import { useWebSocket } from '../../hooks/useWebSocket';
-import StatusBadge from '../../components/common/StatusBadge';
-import SearchInput from '../../components/common/SearchBar';
-import Pagination from '../../components/common/Pagination';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from 'react-query';
 import toast from 'react-hot-toast';
 import {
-  DocumentTextIcon,
-  ClockIcon,
   CheckCircleIcon,
-  XCircleIcon,
-  PrinterIcon,
+  ClockIcon,
+  DocumentTextIcon,
   EyeIcon,
   FunnelIcon,
-  ArrowDownCircleIcon,
+  PrinterIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline';
 
-interface Prescription {
-  id: number;
-  prescription_number: string;
-  patient: {
-    id: number;
-    name: string;
-    phone: string;
-    age: number;
-    gender: string;
-  };
-  doctor: {
-    id: number;
-    name: string;
-    specialization: string;
-  };
-  medicines: Array<{
-    id: number;
-    name: string;
-    dosage: string;
-    frequency: string;
-    duration: string;
-    quantity: number;
-    instructions?: string;
-    substituted?: boolean;
-    original_medicine?: string;
-  }>;
-  status: 'pending' | 'processing' | 'dispensed' | 'cancelled' | 'partial';
-  priority: 'normal' | 'urgent' | 'stat';
-  issued_at: string;
-  dispensed_at?: string;
-  dispensed_by?: string;
-  notes?: string;
-  insurance_covered: boolean;
-  total_cost: number;
+import Pagination from '../../components/common/Pagination';
+import SearchInput from '../../components/common/SearchInput';
+import StatusBadge from '../../components/common/StatusBadge';
+import { useWebSocket } from '../../hooks/useWebSocket';
+import { PharmacyService } from '../../services/api/pharmacy.service';
+import type { Patient, Prescription as ApiPrescription, User } from '../../types/api.types';
+
+type PharmacyPrescription = ApiPrescription & {
+  patient?: Patient;
+  doctor?: User;
+};
+
+type StatusFilter = 'all' | 'pending' | 'dispensed';
+
+const PAGE_SIZE = 10;
+
+function statusVariant(status: string) {
+  switch (status) {
+    case 'issued':
+      return 'warning';
+    case 'partially_dispensed':
+      return 'info';
+    case 'dispensed':
+      return 'success';
+    case 'cancelled':
+      return 'error';
+    default:
+      return 'default';
+  }
+}
+
+function statusIcon(status: string) {
+  switch (status) {
+    case 'issued':
+      return <ClockIcon className="h-5 w-5 text-yellow-500" />;
+    case 'partially_dispensed':
+      return <DocumentTextIcon className="h-5 w-5 text-blue-500" />;
+    case 'dispensed':
+      return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
+    case 'cancelled':
+      return <XCircleIcon className="h-5 w-5 text-red-500" />;
+    default:
+      return null;
+  }
+}
+
+function toLowerSafe(value: unknown) {
+  return typeof value === 'string' ? value.toLowerCase() : '';
 }
 
 const PrescriptionManagement: React.FC = () => {
   const queryClient = useQueryClient();
+
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [priorityFilter, setPriorityFilter] = useState<string>('all');
-  const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedPrescription, setSelectedPrescription] = useState<PharmacyPrescription | null>(null);
+  const [dispenseNotes, setDispenseNotes] = useState('');
 
-  // Fetch prescriptions with filters
-  const { data: prescriptions, isLoading, refetch } = useQuery(
-    ['prescriptions', statusFilter, priorityFilter, currentPage, searchTerm],
-    () => PharmacyService.getPrescriptions({
-      status: statusFilter !== 'all' ? statusFilter : undefined,
-      priority: priorityFilter !== 'all' ? priorityFilter : undefined,
-      page: currentPage,
-      search: searchTerm,
-    })
+  const handleWebSocketIssued = useCallback(
+    (data: unknown) => {
+      const patientName = (data as any)?.patient_name;
+      toast.custom(
+        () => (
+          <div className="bg-blue-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center">
+            <DocumentTextIcon className="h-5 w-5 mr-2" />
+            <div>
+              <strong>New Prescription</strong>
+              {patientName ? <p className="text-sm">Patient: {patientName}</p> : null}
+            </div>
+          </div>
+        ),
+        { duration: 5000 }
+      );
+
+      queryClient.invalidateQueries(['pharmacy-prescriptions']);
+    },
+    [queryClient]
   );
 
-  // Real-time updates for new prescriptions
-  useWebSocket('prescription_issued', (data) => {
-    toast.custom((t) => (
-      <div className="bg-blue-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center">
-        <DocumentTextIcon className="h-5 w-5 mr-2" />
-        <div>
-          <strong>New Prescription</strong>
-          <p className="text-sm">Patient: {data.patient_name}</p>
-        </div>
-      </div>
-    ), { duration: 5000 });
-    queryClient.invalidateQueries('prescriptions');
-  });
+  useWebSocket('prescription_issued', handleWebSocketIssued);
 
-  // Update prescription status mutation
-  const updateStatus = useMutation(
-    ({ id, status, notes }: { id: number; status: string; notes?: string }) =>
-      PharmacyService.updatePrescriptionStatus(id, status, notes),
-    {
-      onSuccess: () => {
-        toast.success('Prescription updated successfully');
-        queryClient.invalidateQueries('prescriptions');
-        setSelectedPrescription(null);
-      },
-    }
+  const { data, isLoading, isError } = useQuery(
+    ['pharmacy-prescriptions', statusFilter],
+    async (): Promise<PharmacyPrescription[]> => {
+      if (statusFilter === 'pending') {
+        return (await PharmacyService.getPendingPrescriptions()) as unknown as PharmacyPrescription[];
+      }
+      if (statusFilter === 'dispensed') {
+        return (await PharmacyService.getDispenseHistory()) as unknown as PharmacyPrescription[];
+      }
+
+      const [pending, dispensed] = await Promise.all([
+        PharmacyService.getPendingPrescriptions(),
+        PharmacyService.getDispenseHistory(),
+      ]);
+
+      const byId = new Map<number, PharmacyPrescription>();
+      (pending as unknown as PharmacyPrescription[]).forEach((p) => byId.set(p.id, p));
+      (dispensed as unknown as PharmacyPrescription[]).forEach((p) => byId.set(p.id, p));
+      return Array.from(byId.values());
+    },
+    { staleTime: 10_000 }
   );
 
-  // Dispense prescription mutation
-  const dispensePrescription = useMutation(
-    ({ id, medicines, notes }: { id: number; medicines?: any[]; notes?: string }) =>
-      PharmacyService.dispensePrescription(id, medicines, notes),
-    {
-      onSuccess: () => {
-        toast.success('Prescription dispensed successfully');
-        queryClient.invalidateQueries('prescriptions');
-        setSelectedPrescription(null);
-      },
-    }
-  );
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
-  const handleDispense = (prescription: Prescription) => {
-    dispensePrescription.mutate({
-      id: prescription.id,
-      notes: 'Dispensed as prescribed',
+  const filtered = useMemo(() => {
+    const list = data ?? [];
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return list;
+
+    return list.filter((p) => {
+      const haystacks = [
+        toLowerSafe(p.patient?.name),
+        toLowerSafe(p.doctor?.name),
+        String(p.id),
+        String(p.patient_id),
+        String(p.doctor_id),
+        ...p.medicines.map((m) => toLowerSafe(m.name)),
+      ];
+
+      return haystacks.some((h) => h.includes(q));
     });
-  };
+  }, [data, searchTerm]);
 
-  const handleMarkProcessing = (id: number) => {
-    updateStatus.mutate({ id, status: 'processing' });
-  };
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paged = useMemo(() => {
+    const page = Math.min(Math.max(1, currentPage), totalPages);
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [currentPage, filtered, totalPages]);
 
-  const handleCancel = (id: number, reason: string) => {
-    updateStatus.mutate({ id, status: 'cancelled', notes: reason });
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch(status) {
-      case 'pending': return <ClockIcon className="h-5 w-5 text-yellow-500" />;
-      case 'processing': return <DocumentTextIcon className="h-5 w-5 text-blue-500" />;
-      case 'dispensed': return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
-      case 'cancelled': return <XCircleIcon className="h-5 w-5 text-red-500" />;
-      default: return null;
+  const dispensePrescription = useMutation(
+    async ({ id, notes }: { id: number; notes?: string }) => PharmacyService.dispensePrescription(id, notes),
+    {
+      onSuccess: async () => {
+        toast.success('Prescription dispensed successfully');
+        setSelectedPrescription(null);
+        setDispenseNotes('');
+        await queryClient.invalidateQueries(['pharmacy-prescriptions']);
+      },
+      onError: () => {
+        toast.error('Failed to dispense prescription');
+      },
     }
-  };
+  );
 
-  const getPriorityBadge = (priority: string) => {
-    const colors = {
-      stat: 'bg-red-100 text-red-800',
-      urgent: 'bg-orange-100 text-orange-800',
-      normal: 'bg-green-100 text-green-800',
-    };
-    return colors[priority as keyof typeof colors] || colors.normal;
-  };
+  const openDetails = useCallback((p: PharmacyPrescription) => {
+    setSelectedPrescription(p);
+    setDispenseNotes('');
+  }, []);
+
+  const canDispense =
+    selectedPrescription?.status !== 'dispensed' && selectedPrescription?.status !== 'cancelled';
 
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-6">
+        <div className="bg-white rounded-lg shadow p-6 text-sm text-red-700">
+          Failed to load prescriptions. Please try again.
+        </div>
       </div>
     );
   }
 
   return (
     <div className="p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Prescription Management</h1>
-        <div className="flex space-x-3">
+
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-            className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-          >
-            {viewMode === 'grid' ? 'List View' : 'Grid View'}
-          </button>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
+            type="button"
+            onClick={() => setShowFilters((v) => !v)}
             className="px-4 py-2 border rounded-lg hover:bg-gray-50 flex items-center"
           >
             <FunnelIcon className="h-5 w-5 mr-2" />
@@ -179,192 +206,141 @@ const PrescriptionManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Search and Filters */}
       <div className="mb-6 space-y-4">
         <SearchInput
-          placeholder="Search by patient name, prescription #, or medicine..."
+          placeholder="Search by patient, doctor, ID, or medicine..."
           value={searchTerm}
           onChange={setSearchTerm}
         />
 
-        {showFilters && (
-          <div className="bg-white p-4 rounded-lg shadow grid grid-cols-3 gap-4">
+        {showFilters ? (
+          <div className="bg-white p-4 rounded-lg shadow grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
                 className="w-full border rounded-md p-2"
               >
-                <option value="all">All Status</option>
                 <option value="pending">Pending</option>
-                <option value="processing">Processing</option>
                 <option value="dispensed">Dispensed</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="partial">Partially Dispensed</option>
+                <option value="all">All</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Priority
-              </label>
-              <select
-                value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                className="w-full border rounded-md p-2"
-              >
-                <option value="all">All Priority</option>
-                <option value="normal">Normal</option>
-                <option value="urgent">Urgent</option>
-                <option value="stat">STAT</option>
-              </select>
+
+            <div className="md:col-span-2 flex items-end justify-between text-sm text-gray-600">
+              <div>
+                Showing {paged.length} of {filtered.length} result(s)
+              </div>
+              <div>
+                Page {Math.min(Math.max(1, currentPage), totalPages)} of {totalPages}
+              </div>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* Prescriptions Grid/List */}
-      <div className={viewMode === 'grid' ? 'grid grid-cols-3 gap-4' : 'space-y-4'}>
-        {prescriptions?.data.map((prescription: Prescription) => (
-          <div
-            key={prescription.id}
-            className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow"
-          >
-            {viewMode === 'grid' ? (
-              // Grid View Card
-              <div className="p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <span className="text-xs text-gray-500">#{prescription.prescription_number}</span>
-                    <h3 className="font-semibold">{prescription.patient.name}</h3>
+      <div className="space-y-3">
+        {paged.map((p) => (
+          <div key={p.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+            <div className="p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4 flex-1 min-w-0">
+                {statusIcon(p.status)}
+
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold truncate">
+                      {p.patient?.name ?? `Patient #${p.patient_id}`}
+                    </span>
+                    <StatusBadge status={p.status} variant={statusVariant(p.status)} />
                   </div>
-                  {getStatusIcon(prescription.status)}
-                </div>
-                
-                <div className="space-y-2 text-sm mb-3">
-                  <p><span className="text-gray-500">Doctor:</span> Dr. {prescription.doctor.name}</p>
-                  <p><span className="text-gray-500">Medicines:</span> {prescription.medicines.length} items</p>
-                  <p><span className="text-gray-500">Total:</span> ${prescription.total_cost}</p>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className={`px-2 py-1 rounded-full text-xs ${getPriorityBadge(prescription.priority)}`}>
-                    {prescription.priority}
-                  </span>
-                  <StatusBadge status={prescription.status} />
-                </div>
-
-                <div className="mt-4 flex space-x-2">
-                  <button
-                    onClick={() => setSelectedPrescription(prescription)}
-                    className="flex-1 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
-                  >
-                    View Details
-                  </button>
-                  {prescription.status === 'pending' && (
-                    <button
-                      onClick={() => handleDispense(prescription)}
-                      className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-                    >
-                      Dispense
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              // List View Row
-              <div className="p-4 flex items-center justify-between hover:bg-gray-50">
-                <div className="flex items-center space-x-4 flex-1">
-                  {getStatusIcon(prescription.status)}
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-semibold">{prescription.patient.name}</span>
-                      <span className="text-sm text-gray-500">({prescription.patient.age}y, {prescription.patient.gender})</span>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      #{prescription.prescription_number} • Dr. {prescription.doctor.name} • {prescription.medicines.length} medicines
-                    </div>
+                  <div className="text-sm text-gray-600 truncate">
+                    #{p.id} - Dr. {p.doctor?.name ?? `#${p.doctor_id}`} - {p.medicines.length} medicine(s)
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Issued: {new Date(p.issued_at).toLocaleString()}
                   </div>
                 </div>
-
-                <div className="flex items-center space-x-4">
-                  <span className={`px-2 py-1 rounded-full text-xs ${getPriorityBadge(prescription.priority)}`}>
-                    {prescription.priority}
-                  </span>
-                  <StatusBadge status={prescription.status} />
-                  <span className="text-sm font-medium">${prescription.total_cost}</span>
-                  
-                  <button
-                    onClick={() => setSelectedPrescription(prescription)}
-                    className="p-2 text-gray-600 hover:text-primary-600"
-                  >
-                    <EyeIcon className="h-5 w-5" />
-                  </button>
-                  
-                  {prescription.status === 'pending' && (
-                    <button
-                      onClick={() => handleDispense(prescription)}
-                      className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-                    >
-                      Dispense
-                    </button>
-                  )}
-                </div>
               </div>
-            )}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => openDetails(p)}
+                  className="p-2 text-gray-600 hover:text-primary-600"
+                  aria-label="View details"
+                >
+                  <EyeIcon className="h-5 w-5" />
+                </button>
+
+                {p.status !== 'dispensed' && p.status !== 'cancelled' ? (
+                  <button
+                    type="button"
+                    onClick={() => dispensePrescription.mutate({ id: p.id, notes: 'Dispensed' })}
+                    className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm disabled:opacity-50"
+                    disabled={dispensePrescription.isLoading}
+                  >
+                    Dispense
+                  </button>
+                ) : null}
+              </div>
+            </div>
           </div>
         ))}
+
+        {paged.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-6 text-sm text-gray-600">No prescriptions found.</div>
+        ) : null}
       </div>
 
-      {/* Pagination */}
-      {prescriptions?.total_pages > 1 && (
+      {totalPages > 1 ? (
         <div className="mt-6">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={prescriptions.total_pages}
-            onPageChange={setCurrentPage}
-          />
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
         </div>
-      )}
+      ) : null}
 
-      {/* Prescription Details Modal */}
-      {selectedPrescription && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+      {selectedPrescription ? (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              {/* Modal Header */}
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold">Prescription Details</h2>
                 <button
+                  type="button"
                   onClick={() => setSelectedPrescription(null)}
                   className="text-gray-500 hover:text-gray-700"
+                  aria-label="Close"
                 >
                   <XCircleIcon className="h-6 w-6" />
                 </button>
               </div>
 
-              {/* Prescription Info */}
-              <div className="grid grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-2">Patient Information</h3>
-                  <p><span className="text-gray-600">Name:</span> {selectedPrescription.patient.name}</p>
-                  <p><span className="text-gray-600">Age/Gender:</span> {selectedPrescription.patient.age}y / {selectedPrescription.patient.gender}</p>
-                  <p><span className="text-gray-600">Phone:</span> {selectedPrescription.patient.phone}</p>
+                  <h3 className="font-semibold mb-2">Patient</h3>
+                  <p className="text-sm">
+                    <span className="text-gray-600">Name:</span>{' '}
+                    {selectedPrescription.patient?.name ?? `Patient #${selectedPrescription.patient_id}`}
+                  </p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-2">Prescription Information</h3>
-                  <p><span className="text-gray-600">Number:</span> #{selectedPrescription.prescription_number}</p>
-                  <p><span className="text-gray-600">Doctor:</span> Dr. {selectedPrescription.doctor.name}</p>
-                  <p><span className="text-gray-600">Specialization:</span> {selectedPrescription.doctor.specialization}</p>
-                  <p><span className="text-gray-600">Issued:</span> {new Date(selectedPrescription.issued_at).toLocaleString()}</p>
+                  <h3 className="font-semibold mb-2">Prescription</h3>
+                  <p className="text-sm">
+                    <span className="text-gray-600">ID:</span> #{selectedPrescription.id}
+                  </p>
+                  <p className="text-sm">
+                    <span className="text-gray-600">Doctor:</span> Dr.{' '}
+                    {selectedPrescription.doctor?.name ?? `#${selectedPrescription.doctor_id}`}
+                  </p>
+                  <p className="text-sm">
+                    <span className="text-gray-600">Issued:</span>{' '}
+                    {new Date(selectedPrescription.issued_at).toLocaleString()}
+                  </p>
                 </div>
               </div>
 
-              {/* Medicines List */}
               <div className="mb-6">
-                <h3 className="font-semibold mb-3">Prescribed Medicines</h3>
+                <h3 className="font-semibold mb-3">Medicines</h3>
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
@@ -372,98 +348,74 @@ const PrescriptionManagement: React.FC = () => {
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Dosage</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Frequency</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Duration</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Quantity</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Qty</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Instructions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {selectedPrescription.medicines.map((medicine, idx) => (
+                    {selectedPrescription.medicines.map((m, idx) => (
                       <tr key={idx}>
-                        <td className="px-4 py-2 text-sm">
-                          {medicine.name}
-                          {medicine.substituted && (
-                            <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                              Substituted
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-2 text-sm">{medicine.dosage}</td>
-                        <td className="px-4 py-2 text-sm">{medicine.frequency}</td>
-                        <td className="px-4 py-2 text-sm">{medicine.duration}</td>
-                        <td className="px-4 py-2 text-sm">{medicine.quantity}</td>
-                        <td className="px-4 py-2 text-sm text-gray-500">{medicine.instructions || '-'}</td>
+                        <td className="px-4 py-2 text-sm">{m.name}</td>
+                        <td className="px-4 py-2 text-sm">{m.dosage}</td>
+                        <td className="px-4 py-2 text-sm">{m.frequency}</td>
+                        <td className="px-4 py-2 text-sm">{m.duration}</td>
+                        <td className="px-4 py-2 text-sm">{m.quantity ?? '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-500">{m.instructions ?? '-'}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex space-x-3 pt-4 border-t">
-                {selectedPrescription.status === 'pending' && (
-                  <>
-                    <button
-                      onClick={() => {
-                        handleMarkProcessing(selectedPrescription.id);
-                        setSelectedPrescription(null);
-                      }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                    >
-                      Start Processing
-                    </button>
-                    <button
-                      onClick={() => handleDispense(selectedPrescription)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                    >
-                      Dispense All
-                    </button>
-                  </>
-                )}
-                {selectedPrescription.status === 'processing' && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Dispensing notes (optional)</label>
+                <textarea
+                  value={dispenseNotes}
+                  onChange={(e) => setDispenseNotes(e.target.value)}
+                  rows={3}
+                  className="block w-full border rounded-md p-2"
+                  placeholder="Add any notes for this dispense..."
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-4 border-t">
+                {canDispense ? (
                   <button
-                    onClick={() => handleDispense(selectedPrescription)}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    type="button"
+                    onClick={() =>
+                      dispensePrescription.mutate({ id: selectedPrescription.id, notes: dispenseNotes || undefined })
+                    }
+                    disabled={dispensePrescription.isLoading}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                   >
-                    Complete Dispense
+                    Dispense
                   </button>
-                )}
+                ) : null}
+
                 <button
+                  type="button"
                   onClick={() => window.print()}
                   className="px-4 py-2 border rounded-lg hover:bg-gray-50 flex items-center"
                 >
                   <PrinterIcon className="h-5 w-5 mr-2" />
                   Print
                 </button>
+
                 <button
-                  onClick={() => {
-                    // Download as PDF
-                  }}
-                  className="px-4 py-2 border rounded-lg hover:bg-gray-50 flex items-center"
+                  type="button"
+                  onClick={() => setSelectedPrescription(null)}
+                  className="ml-auto px-4 py-2 border rounded-lg hover:bg-gray-50"
                 >
-                  <ArrowDownCircleIcon className="h-5 w-5 mr-2" />
-                  Download
+                  Close
                 </button>
-                {(selectedPrescription.status === 'pending' || selectedPrescription.status === 'processing') && (
-                  <button
-                    onClick={() => {
-                      const reason = prompt('Please enter cancellation reason:');
-                      if (reason) {
-                        handleCancel(selectedPrescription.id, reason);
-                        setSelectedPrescription(null);
-                      }
-                    }}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 ml-auto"
-                  >
-                    Cancel Prescription
-                  </button>
-                )}
               </div>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };
 
 export default PrescriptionManagement;
+

@@ -3,6 +3,26 @@ import type { LoginRequest, LoginResponse, User } from "../../types/api.types";
 
 // Mock users data
 export const mockUsers: User[] = [
+  ...(import.meta.env.DEV ? [{
+    id: 999,
+    clinic_id: 1,
+    name: 'Dev Admin (All Access)',
+    email: 'devadmin@clinic.com',
+    role: 'admin',
+    is_active: true,
+    created_at: '2024-01-01T00:00:00Z',
+    last_login: '2024-03-15T12:00:00Z',
+  } satisfies User] : []),
+  {
+    id: 6,
+    clinic_id: 1,
+    name: 'Front Desk',
+    email: 'frontdesk@clinic.com',
+    role: 'front_desk',
+    is_active: true,
+    created_at: '2024-01-01T00:00:00Z',
+    last_login: '2024-03-15T09:45:00Z',
+  },
   {
     id: 1,
     clinic_id: 1,
@@ -54,16 +74,6 @@ export const mockUsers: User[] = [
     created_at: '2024-01-01T00:00:00Z',
     last_login: '2024-03-14T14:30:00Z',
   },
-    {
-    id: 6,
-    clinic_id: 1,
-    name: 'Patient Demo',
-    email: 'jerin@clinic.com',
-    role: 'super_admin',
-    is_active: true,
-    created_at: '2024-01-01T00:00:00Z',
-    last_login: '2024-03-14T14:30:00Z',
-  },
 ];
 
 // Mock login function
@@ -76,6 +86,15 @@ export const mockLogin = (email: string, password: string): LoginResponse => {
     throw {
       code: 'INVALID_CREDENTIALS',
       message: 'Invalid email or password',
+      status_code: 401,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  if (!import.meta.env.DEV && user.role === 'admin') {
+    throw {
+      code: 'UNAUTHORIZED',
+      message: 'Dev admin is only available in development',
       status_code: 401,
       timestamp: new Date().toISOString(),
     };

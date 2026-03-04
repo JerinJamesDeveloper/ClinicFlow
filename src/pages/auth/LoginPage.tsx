@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '../../hooks/useAuth';
-import { EnvelopeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { EnvelopeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, HeartIcon } from '@heroicons/react/24/outline';
 import type { AuthError } from '../../types/error.types'
 
 const loginSchema = z.object({
@@ -66,169 +66,238 @@ function isAuthError(error: unknown): error is AuthError {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <div className="h-16 w-16 bg-primary-600 rounded-xl flex items-center justify-center">
-            <span className="text-3xl font-bold text-white">CF</span>
-          </div>
-        </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          ClinicFlow Platform
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Sign in to access your healthcare dashboard
-        </p>
+    <div className="min-h-screen flex relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary-50 via-white to-accent-50">
+        {/* Floating Shapes */}
+        <div className="absolute top-20 left-20 w-72 h-72 bg-primary-200/30 rounded-full blur-3xl animate-pulse-soft" />
+        <div className="absolute bottom-20 right-20 w-96 h-96 bg-accent-200/20 rounded-full blur-3xl animate-pulse-soft animation-delay-200" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-100/20 rounded-full blur-3xl" />
+        
+        {/* Grid Pattern */}
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMwMDAiIGZpbGwtb3BhY2l0eT0iLjAyIj48cGF0aCBkPSJNMzAgMzBoMjB2MjBIMzB6TTAgMzBoMjB2MjBIMHoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-40" />
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-xl rounded-lg sm:px-10">
-          {/* Error Alert */}
-          {loginError && (
-            <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
-              <p className="text-sm">{loginError}</p>
-            </div>
-          )}
-
-          <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-            {/* Email Field */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <EnvelopeIcon className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  {...register('email')}
-                  type="email"
-                  autoComplete="email"
-                  className={`appearance-none block w-full pl-10 pr-3 py-2 border ${
-                    errors.email ? 'border-red-300' : 'border-gray-300'
-                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm`}
-                  placeholder="you@example.com"
-                />
+      {/* Left Side - Branding */}
+      <div className="hidden lg:flex lg:w-1/2 relative items-center justify-center p-12">
+        <div className="max-w-md text-center">
+          {/* Logo */}
+          <div className="flex justify-center mb-8">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-2xl shadow-primary-500/30 animate-float">
+                <HeartIcon className="w-12 h-12 text-white" />
               </div>
-              {errors.email && (
-                <p className="mt-2 text-sm text-red-600">{errors.email.message}</p>
-              )}
+              <div className="absolute -inset-2 rounded-3xl bg-gradient-to-br from-primary-400 to-accent-400 opacity-30 blur-xl animate-pulse-soft" />
+            </div>
+          </div>
+          
+          <h1 className="text-4xl font-bold text-gradient mb-4">
+            ClinicFlow
+          </h1>
+          <p className="text-xl text-surface-600 mb-8">
+            Modern Healthcare Management Platform
+          </p>
+          
+          {/* Features */}
+          <div className="space-y-4 text-left">
+            {[
+              'Streamlined patient management',
+              'Real-time appointment scheduling',
+              'Integrated pharmacy & lab workflows',
+              'Comprehensive analytics dashboard'
+            ].map((feature, index) => (
+              <div 
+                key={index} 
+                className="flex items-center gap-3 text-surface-600 animate-slide-up"
+                style={{ animationDelay: `${index * 100 + 300}ms` }}
+              >
+                <div className="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                {feature}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side - Login Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+        <div className="w-full max-w-md">
+          {/* Mobile Logo */}
+          <div className="lg:hidden flex justify-center mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-lg">
+                <HeartIcon className="w-6 h-6 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-gradient">ClinicFlow</h1>
+            </div>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8 animate-scale-in">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-surface-900">Welcome back</h2>
+              <p className="text-surface-500 mt-2">Sign in to access your dashboard</p>
             </div>
 
-            {/* Password Field */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <LockClosedIcon className="h-5 w-5 text-gray-400" />
+            {/* Error Alert */}
+            {loginError && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl animate-shake">
+                <p className="text-sm text-red-600 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {loginError}
+                </p>
+              </div>
+            )}
+
+            <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+              {/* Email Field */}
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-surface-700 mb-1.5">
+                  Email address
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <EnvelopeIcon className="h-5 w-5 text-surface-400 group-focus-within:text-primary-500 transition-colors" />
+                  </div>
+                  <input
+                    {...register('email')}
+                    type="email"
+                    autoComplete="email"
+                    className={`input-field pl-11 ${errors.email ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''}`}
+                    placeholder="you@example.com"
+                  />
                 </div>
-                <input
-                  {...register('password')}
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  className={`appearance-none block w-full pl-10 pr-10 py-2 border ${
-                    errors.password ? 'border-red-300' : 'border-gray-300'
-                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm`}
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                {errors.email && (
+                  <p className="mt-1.5 text-sm text-red-500">{errors.email.message}</p>
+                )}
+              </div>
+
+              {/* Password Field */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-surface-700 mb-1.5">
+                  Password
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <LockClosedIcon className="h-5 w-5 text-surface-400 group-focus-within:text-primary-500 transition-colors" />
+                  </div>
+                  <input
+                    {...register('password')}
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    className={`input-field pl-11 pr-11 ${errors.password ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''}`}
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-surface-400 hover:text-surface-600 transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeSlashIcon className="h-5 w-5" />
+                    ) : (
+                      <EyeIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="mt-1.5 text-sm text-red-500">{errors.password.message}</p>
+                )}
+              </div>
+
+              {/* Remember Me & Forgot Password */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    {...register('rememberMe')}
+                    type="checkbox"
+                    id="rememberMe"
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-surface-300 rounded"
+                  />
+                  <label htmlFor="rememberMe" className="ml-2 block text-sm text-surface-600">
+                    Remember me
+                  </label>
+                </div>
+
+                <Link
+                  to="/forgot-password"
+                  className="text-sm font-medium text-primary-600 hover:text-primary-500"
                 >
-                  {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  Forgot password?
+                </Link>
+              </div>
+
+              {/* Submit Button */}
+              <div>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="btn-primary w-full py-3"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                      Signing in...
+                    </div>
                   ) : (
-                    <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    'Sign in'
                   )}
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-2 text-sm text-red-600">{errors.password.message}</p>
-              )}
-            </div>
+            </form>
 
-            {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  {...register('rememberMe')}
-                  type="checkbox"
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                />
-                <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-900">
-                  Remember me
-                </label>
+            {/* Register Link */}
+            <div className="mt-8">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-surface-200" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-white text-surface-500">
+                    New to ClinicFlow?
+                  </span>
+                </div>
               </div>
 
-              <div className="text-sm">
+              <div className="mt-6">
                 <Link
-                  to="/forgot-password"
-                  className="font-medium text-primary-600 hover:text-primary-500"
+                  to="/register-clinic"
+                  className="btn-secondary w-full"
                 >
-                  Forgot your password?
+                  Register your clinic
                 </Link>
               </div>
             </div>
 
-            {/* Submit Button */}
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Signing in...
+            {/* Demo Credentials */}
+            <div className="mt-8 p-4 bg-surface-50 rounded-xl border border-surface-100">
+              <p className="text-xs font-medium text-surface-600 mb-3">Demo Credentials:</p>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-2 bg-white rounded-lg">
+                  <p className="font-medium text-surface-700">Admin</p>
+                  <p className="text-surface-500">admin@clinic.com</p>
+                </div>
+                <div className="p-2 bg-white rounded-lg">
+                  <p className="font-medium text-surface-700">Doctor</p>
+                  <p className="text-surface-500">doctor@clinic.com</p>
+                </div>
+                <div className="p-2 bg-white rounded-lg">
+                  <p className="font-medium text-surface-700">Front Desk</p>
+                  <p className="text-surface-500">frontdesk@clinic.com</p>
+                </div>
+                {import.meta.env.DEV && (
+                  <div className="p-2 bg-primary-50 rounded-lg">
+                    <p className="font-medium text-primary-700">Dev Admin</p>
+                    <p className="text-primary-600">devadmin@clinic.com</p>
                   </div>
-                ) : (
-                  'Sign in'
                 )}
-              </button>
-            </div>
-          </form>
-
-          {/* Register Link */}
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
-                  New to ClinicFlow?
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <Link
-                to="/register-clinic"
-                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              >
-                Register your clinic
-              </Link>
-            </div>
-          </div>
-
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-600 mb-2">Demo Credentials:</p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>
-                <p className="font-medium">Admin:</p>
-                <p className="text-gray-500">admin@clinic.com</p>
-                <p className="text-gray-500">password123</p>
-              </div>
-              <div>
-                <p className="font-medium">Doctor:</p>
-                <p className="text-gray-500">doctor@clinic.com</p>
-                <p className="text-gray-500">password123</p>
-              </div>
+              <p className="text-xs text-surface-400 mt-2 text-center">Password: password123</p>
             </div>
           </div>
         </div>

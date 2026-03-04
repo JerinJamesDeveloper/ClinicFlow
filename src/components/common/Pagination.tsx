@@ -4,91 +4,91 @@ interface PaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
-  siblingCount?: number;
+  className?: string;
+}
+
+function clampPage(page: number, totalPages: number) {
+  return Math.min(Math.max(1, page), Math.max(1, totalPages));
+}
+
+function getVisiblePages(currentPage: number, totalPages: number) {
+  const pages: Array<number | '...'> = [];
+
+  if (totalPages <= 7) {
+    for (let p = 1; p <= totalPages; p++) pages.push(p);
+    return pages;
+  }
+
+  pages.push(1);
+
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+
+  if (start > 2) pages.push('...');
+  for (let p = start; p <= end; p++) pages.push(p);
+  if (end < totalPages - 1) pages.push('...');
+
+  pages.push(totalPages);
+  return pages;
 }
 
 const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
   onPageChange,
-  siblingCount = 1
+  className = '',
 }) => {
-  // Generate page numbers to display
-  const getPageNumbers = () => {
-    const pages = [];
-    const leftSibling = Math.max(1, currentPage - siblingCount);
-    const rightSibling = Math.min(totalPages, currentPage + siblingCount);
-    
-    // Show first page
-    if (leftSibling > 1) {
-      pages.push(1);
-      if (leftSibling > 2) pages.push('...');
-    }
-    
-    // Show middle pages
-    for (let i = leftSibling; i <= rightSibling; i++) {
-      pages.push(i);
-    }
-    
-    // Show last page
-    if (rightSibling < totalPages) {
-      if (rightSibling < totalPages - 1) pages.push('...');
-      pages.push(totalPages);
-    }
-    
-    return pages;
-  };
+  if (totalPages <= 1) return null;
+
+  const safeCurrent = clampPage(currentPage, totalPages);
+  const pages = getVisiblePages(safeCurrent, totalPages);
 
   return (
-    <nav className="pagination" aria-label="Pagination">
-      <ul className="pagination-list">
-        {/* Previous Button */}
-        <li>
-          <button
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="pagination-button prev"
-            aria-label="Previous page"
-          >
-            ← Prev
-          </button>
-        </li>
+    <div className={`flex items-center justify-between ${className}`}>
+      <button
+        type="button"
+        onClick={() => onPageChange(clampPage(safeCurrent - 1, totalPages))}
+        disabled={safeCurrent <= 1}
+        className="px-3 py-2 border rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+      >
+        Previous
+      </button>
 
-        {/* Page Numbers */}
-        {getPageNumbers().map((page, index) => (
-          <li key={index}>
-            {page === '...' ? (
-              <span className="pagination-dots">...</span>
-            ) : (
-              <button
-                onClick={() => onPageChange(page as number)}
-                className={`pagination-button ${currentPage === page ? 'active' : ''}`}
-                aria-current={currentPage === page ? 'page' : undefined}
-              >
-                {page}
-              </button>
-            )}
-          </li>
-        ))}
-
-        {/* Next Button */}
-        <li>
-          <button
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="pagination-button next"
-            aria-label="Next page"
-          >
-            Next →
-          </button>
-        </li>
-      </ul>
-
-      <div className="pagination-info">
-        Page {currentPage} of {totalPages}
+      <div className="flex items-center space-x-1">
+        {pages.map((p, idx) =>
+          p === '...' ? (
+            <span key={`ellipsis-${idx}`} className="px-2 text-gray-500">
+              ...
+            </span>
+          ) : (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onPageChange(p)}
+              className={[
+                'px-3 py-2 border rounded-md text-sm',
+                p === safeCurrent
+                  ? 'bg-primary-600 text-white border-primary-600'
+                  : 'hover:bg-gray-50',
+              ].join(' ')}
+            >
+              {p}
+            </button>
+          )
+        )}
       </div>
-    </nav>
+
+      <button
+        type="button"
+        onClick={() => onPageChange(clampPage(safeCurrent + 1, totalPages))}
+        disabled={safeCurrent >= totalPages}
+        className="px-3 py-2 border rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+      >
+        Next
+      </button>
+    </div>
   );
 };
 
 export default Pagination;
+

@@ -4,7 +4,7 @@ export interface User {
   clinic_id: number;
   name: string;
   email: string;
-  role: 'super_admin' | 'clinic_admin' | 'doctor' | 'lab_staff' | 'pharmacist' | 'patient';
+  role: 'admin' | 'super_admin' | 'clinic_admin' | 'front_desk' | 'doctor' | 'lab_staff' | 'pharmacist' | 'patient';
   is_active: boolean;
   created_at: string;
   last_login?: string;
@@ -37,7 +37,7 @@ export interface PatientCreate {
 export interface AppointmentFilters {
   page?: number;
   size?: number;
-  status?: 'scheduled' | 'checked_in' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+  status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
   doctor_id?: number;
   patient_id?: number;
   date_from?: string;
@@ -58,8 +58,8 @@ export interface Appointment {
   patient_id: number;
   doctor_id: number;
   appointment_date: string;
-  status: 'scheduled' | 'checked_in' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
-  type: 'in_person' | 'online' | 'walk_in';
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+  type: 'in_person' | 'online';
   meeting_link?: string;
   notes?: string;
   created_at: string;
@@ -72,7 +72,7 @@ export interface AppointmentCreate {
   patient_id: number;
   doctor_id: number;
   appointment_date: string;
-  type: 'in_person' | 'online' | 'walk_in';
+  type: 'in_person' | 'online';
   notes?: string;
 }
 

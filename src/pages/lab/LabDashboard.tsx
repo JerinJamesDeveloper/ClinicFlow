@@ -19,8 +19,9 @@ const LabDashboard: React.FC = () => {
 
   // Real-time updates for new test requests
   useWebSocket('appointment_update', (data) => {
-    if (data.type === 'lab_requested') {
-      toast.info('New lab test requested');
+    const event = data as any;
+    if (event?.type === 'lab_requested') {
+      toast('New lab test requested');
       refetch();
     }
   });
