@@ -121,6 +121,18 @@ const triageMeta: Record<TriageLevel, { label: string; color: string; priority: 
   normal: { label: 'Normal (Green) - Standard queue', color: 'bg-green-100 text-green-800 border-green-200', priority: 60 },
 };
 
+const tabs = [
+  { name: 'Patient & Doctor', id: 'patient' },
+  { name: 'Vital Signs', id: 'vitals' },
+  { name: 'Complaint', id: 'complaint' },
+  { name: 'Medical History', id: 'history' },
+  { name: 'Observations', id: 'observations' },
+  { name: 'Triage', id: 'triage' },
+  { name: 'Attachments', id: 'attachments' },
+  { name: 'Checklist', id: 'checklist' },
+  { name: 'Recent', id: 'recent' },
+];
+
 const readRecords = (): NursingRecord[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -193,6 +205,7 @@ const PreDoctorConsultation: React.FC = () => {
   const [checkAllergiesRecorded, setCheckAllergiesRecorded] = useState(false);
 
   const [recordsVersion, setRecordsVersion] = useState(0);
+  const [activeTab, setActiveTab] = useState('patient');
 
   const bmi = useMemo(() => {
     if (!heightCm || !weightKg || heightCm <= 0 || weightKg <= 0) return null;
@@ -386,314 +399,353 @@ const PreDoctorConsultation: React.FC = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Pre-Doctor Consultation</h1>
-        <p className="text-sm text-gray-500">Nurse intake, triage and handoff to doctor queue.</p>
-      </div>
-
-      <div className="bg-white rounded-lg shadow p-4 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">1) Patient & Doctor</h2>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Find patient</label>
-          <SearchBar onSearch={setPatientSearch} debounceMs={150} placeholder="Search name/phone/MRN" />
-          {patientResults.length > 0 && (
-            <div className="mt-2 border rounded-md divide-y max-h-56 overflow-auto">
-              {patientResults.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setSelectedPatientMrn(p.mrn)}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${selectedPatientMrn === p.mrn ? 'bg-primary-50' : ''}`}
-                >
-                  <span className="font-medium">{p.name}</span> <span className="text-gray-500">({p.mrn})</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Selected MRN</label>
-            <input
-              value={selectedPatientMrn}
-              onChange={(e) => setSelectedPatientMrn(e.target.value)}
-              className="w-full border rounded-md p-2"
-              placeholder="MRN-..."
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Doctor</label>
-            <select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} className="w-full border rounded-md p-2">
-              <option value="">Select doctor</option>
-              {scheduling.doctors.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name} ({d.specialization || 'General'})
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow p-4 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">2) Vital Signs</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Systolic</label>
-            <input type="number" value={systolic ?? ''} onChange={(e) => setSystolic(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Diastolic</label>
-            <input type="number" value={diastolic ?? ''} onChange={(e) => setDiastolic(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Pulse Rate (bpm)</label>
-            <input type="number" value={pulseRate ?? ''} onChange={(e) => setPulseRate(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Respiratory Rate</label>
-            <input type="number" value={respiratoryRate ?? ''} onChange={(e) => setRespiratoryRate(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Temperature</label>
-            <div className="flex gap-2">
-              <input type="number" step="0.1" value={temperature ?? ''} onChange={(e) => setTemperature(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
-              <select value={temperatureUnit} onChange={(e) => setTemperatureUnit(e.target.value as 'C' | 'F')} className="border rounded-md p-2">
-                <option value="C">C</option>
-                <option value="F">F</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">SpO2 (%)</label>
-            <input type="number" value={spo2 ?? ''} onChange={(e) => setSpo2(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Height (cm)</label>
-            <input type="number" step="0.1" value={heightCm ?? ''} onChange={(e) => setHeightCm(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Weight (kg)</label>
-            <input type="number" step="0.1" value={weightKg ?? ''} onChange={(e) => setWeightKg(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
-          </div>
-        </div>
-        <div className="rounded-md border p-3 bg-gray-50 text-sm">
-          <span className="font-medium">Blood Pressure:</span> {systolic ?? '-'} / {diastolic ?? '-'} | <span className="font-medium">BMI:</span>{' '}
-          {bmi ?? '-'}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow p-4 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">3) Chief Complaint & Symptoms</h2>
-        <div>
-          <label className="block text-sm text-gray-700 mb-1">Chief Complaint</label>
-          <textarea value={chiefComplaint} onChange={(e) => setChiefComplaint(e.target.value)} rows={3} className="w-full border rounded-md p-2" />
-        </div>
-        <div>
-          <label className="block text-sm text-gray-700 mb-2">Symptoms</label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {symptomOptions.map((s) => (
-              <label key={s} className="text-sm flex items-center gap-2 border rounded-md p-2">
-                <input type="checkbox" checked={symptoms.includes(s)} onChange={() => toggleSymptom(s)} />
-                {s}
-              </label>
-            ))}
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Duration</label>
-            <input type="number" value={durationValue ?? ''} onChange={(e) => setDurationValue(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Unit</label>
-            <select value={durationUnit} onChange={(e) => setDurationUnit(e.target.value as 'hours' | 'days' | 'weeks')} className="w-full border rounded-md p-2">
-              <option value="hours">Hours</option>
-              <option value="days">Days</option>
-              <option value="weeks">Weeks</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Pain Scale (1-10): {painScale}</label>
-            <input type="range" min={1} max={10} value={painScale} onChange={(e) => setPainScale(Number(e.target.value))} className="w-full" />
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow p-4 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">4) Medical History</h2>
-        <div>
-          <label className="block text-sm text-gray-700 mb-2">Known Conditions</label>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {conditionOptions.map((c) => (
-              <label key={c} className="text-sm flex items-center gap-2 border rounded-md p-2">
-                <input type="checkbox" checked={knownConditions.includes(c)} onChange={() => toggleCondition(c)} />
-                {c}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Drug Allergies</label>
-            <input value={drugAllergies} onChange={(e) => setDrugAllergies(e.target.value)} className="w-full border rounded-md p-2" />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Food Allergies</label>
-            <input value={foodAllergies} onChange={(e) => setFoodAllergies(e.target.value)} className="w-full border rounded-md p-2" />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Other Allergies</label>
-            <input value={otherAllergies} onChange={(e) => setOtherAllergies(e.target.value)} className="w-full border rounded-md p-2" />
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm text-gray-700">Current Medications</label>
-            <button type="button" onClick={addMedicationRow} className="text-sm px-3 py-1 rounded border hover:bg-gray-50">
-              + Add
+    <div className="h-full">
+      <div className="bg-white border-b px-6">
+        <nav className="flex gap-2 overflow-x-auto">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`px-3 py-3 text-sm font-medium border-b-2 whitespace-nowrap ${
+                activeTab === t.id ? 'border-primary-600 text-primary-700' : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              {t.name}
             </button>
-          </div>
-          <div className="space-y-2">
-            {medications.map((m, i) => (
-              <div key={i} className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                <input value={m.name} onChange={(e) => updateMedication(i, 'name', e.target.value)} className="border rounded-md p-2" placeholder="Medication Name" />
-                <input value={m.dosage} onChange={(e) => updateMedication(i, 'dosage', e.target.value)} className="border rounded-md p-2" placeholder="Dosage" />
-                <input value={m.frequency} onChange={(e) => updateMedication(i, 'frequency', e.target.value)} className="border rounded-md p-2" placeholder="Frequency" />
-                <button type="button" onClick={() => removeMedicationRow(i)} className="px-3 py-2 rounded border hover:bg-gray-50">
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow p-4 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">5) Nursing Notes / Observations</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Patient Appearance</label>
-            <select value={appearance} onChange={(e) => setAppearance(e.target.value as 'normal' | 'weak' | 'distressed')} className="w-full border rounded-md p-2">
-              <option value="normal">Normal</option>
-              <option value="weak">Weak</option>
-              <option value="distressed">Distressed</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Mental Status</label>
-            <select value={mentalStatus} onChange={(e) => setMentalStatus(e.target.value as 'alert' | 'drowsy' | 'confused')} className="w-full border rounded-md p-2">
-              <option value="alert">Alert</option>
-              <option value="drowsy">Drowsy</option>
-              <option value="confused">Confused</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Mobility</label>
-            <select value={mobility} onChange={(e) => setMobility(e.target.value as 'normal' | 'assisted' | 'wheelchair')} className="w-full border rounded-md p-2">
-              <option value="normal">Normal</option>
-              <option value="assisted">Assisted</option>
-              <option value="wheelchair">Wheelchair</option>
-            </select>
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm text-gray-700 mb-1">Nursing Notes</label>
-          <textarea value={nursingNotes} onChange={(e) => setNursingNotes(e.target.value)} rows={4} className="w-full border rounded-md p-2" placeholder="Patient complaining of severe headache for 2 days..." />
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow p-4 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">6) Triage Level</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {(Object.keys(triageMeta) as TriageLevel[]).map((level) => (
-            <label key={level} className={`border rounded-md p-3 cursor-pointer ${triageMeta[level].color}`}>
-              <input
-                type="radio"
-                name="triage"
-                checked={triageLevel === level}
-                onChange={() => setTriageLevel(level)}
-                className="mr-2"
-              />
-              {triageMeta[level].label}
-            </label>
           ))}
-        </div>
+        </nav>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-4 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">7) Attachments</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Attachment Type</label>
-            <select value={attachmentType} onChange={(e) => setAttachmentType(e.target.value as AttachmentType)} className="w-full border rounded-md p-2">
-              <option value="lab_report">Lab Reports</option>
-              <option value="prescription">Previous Prescriptions</option>
-              <option value="wound_image">Wound Images</option>
-              <option value="ecg_image">ECG Images</option>
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm text-gray-700 mb-1">Upload Files</label>
-            <input type="file" multiple onChange={onUploadAttachments} className="w-full border rounded-md p-2" />
-          </div>
-        </div>
-        {attachments.length > 0 && (
-          <div className="space-y-2">
-            {attachments.map((a) => (
-              <div key={a.id} className="flex items-center justify-between border rounded-md px-3 py-2 text-sm">
-                <span>
-                  {a.fileName} <span className="text-gray-500">({a.type})</span>
-                </span>
-                <button type="button" onClick={() => removeAttachment(a.id)} className="text-red-600 hover:text-red-800">
-                  Remove
-                </button>
+      <div className="p-6">
+        {/* Patient & Doctor Tab */}
+        {activeTab === 'patient' && (
+          <div className="bg-white rounded-lg shadow p-4 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Patient & Doctor</h2>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Find patient</label>
+              <SearchBar onSearch={setPatientSearch} debounceMs={150} placeholder="Search name/phone/MRN" />
+              {patientResults.length > 0 && (
+                <div className="mt-2 border rounded-md divide-y max-h-48 overflow-auto">
+                  {patientResults.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setSelectedPatientMrn(p.mrn)}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${selectedPatientMrn === p.mrn ? 'bg-primary-50' : ''}`}
+                    >
+                      <span className="font-medium">{p.name}</span> <span className="text-gray-500">({p.mrn})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Selected MRN</label>
+                <input
+                  value={selectedPatientMrn}
+                  onChange={(e) => setSelectedPatientMrn(e.target.value)}
+                  className="w-full border rounded-md p-2"
+                  placeholder="MRN-..."
+                />
               </div>
-            ))}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Doctor</label>
+                <select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} className="w-full border rounded-md p-2">
+                  <option value="">Select doctor</option>
+                  {scheduling.doctors.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name} ({d.specialization || 'General'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
         )}
-      </div>
 
-      <div className="bg-white rounded-lg shadow p-4 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">8) Pre-Doctor Checklist</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <label className="flex items-center gap-2 border rounded-md p-2 text-sm"><input type="checkbox" checked={checkVitalsRecorded} onChange={(e) => setCheckVitalsRecorded(e.target.checked)} /> Vitals Recorded</label>
-          <label className="flex items-center gap-2 border rounded-md p-2 text-sm"><input type="checkbox" checked={checkSymptomsEntered} onChange={(e) => setCheckSymptomsEntered(e.target.checked)} /> Symptoms Entered</label>
-          <label className="flex items-center gap-2 border rounded-md p-2 text-sm"><input type="checkbox" checked={checkHistoryChecked} onChange={(e) => setCheckHistoryChecked(e.target.checked)} /> Medical History Checked</label>
-          <label className="flex items-center gap-2 border rounded-md p-2 text-sm"><input type="checkbox" checked={checkAllergiesRecorded} onChange={(e) => setCheckAllergiesRecorded(e.target.checked)} /> Allergies Recorded</label>
-        </div>
-
-        <div className="flex flex-wrap gap-2 justify-end">
-          <button type="button" onClick={resetForm} className="px-4 py-2 rounded-lg border bg-white hover:bg-gray-50">
-            Reset Form
-          </button>
-          <button type="button" onClick={onSendToDoctorQueue} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">
-            Send to Doctor Queue
-          </button>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow p-4">
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Recent Pre-Doctor Consultations</h2>
-        {recentRecords.length === 0 ? (
-          <p className="text-sm text-gray-600">No records yet.</p>
-        ) : (
-          <div className="space-y-2">
-            {recentRecords.map((r) => (
-              <div key={r.id} className="border rounded-md p-3 text-sm">
-                <div className="font-medium text-gray-900">
-                  {r.patientMrn} • Token {r.queueToken}
-                </div>
-                <div className="text-gray-600">
-                  {new Date(r.createdAt).toLocaleString()} • {r.nurseName} • {triageMeta[r.triageLevel].label}
-                </div>
-                <div className="text-gray-700 mt-1">Chief Complaint: {r.chiefComplaint}</div>
+        {/* Vital Signs Tab */}
+        {activeTab === 'vitals' && (
+          <div className="bg-white rounded-lg shadow p-4 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Vital Signs</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Systolic</label>
+                <input type="number" value={systolic ?? ''} onChange={(e) => setSystolic(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
               </div>
-            ))}
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Diastolic</label>
+                <input type="number" value={diastolic ?? ''} onChange={(e) => setDiastolic(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Pulse Rate (bpm)</label>
+                <input type="number" value={pulseRate ?? ''} onChange={(e) => setPulseRate(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Respiratory Rate</label>
+                <input type="number" value={respiratoryRate ?? ''} onChange={(e) => setRespiratoryRate(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Temperature</label>
+                <div className="flex gap-2">
+                  <input type="number" step="0.1" value={temperature ?? ''} onChange={(e) => setTemperature(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
+                  <select value={temperatureUnit} onChange={(e) => setTemperatureUnit(e.target.value as 'C' | 'F')} className="border rounded-md p-2">
+                    <option value="C">C</option>
+                    <option value="F">F</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">SpO2 (%)</label>
+                <input type="number" value={spo2 ?? ''} onChange={(e) => setSpo2(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Height (cm)</label>
+                <input type="number" step="0.1" value={heightCm ?? ''} onChange={(e) => setHeightCm(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Weight (kg)</label>
+                <input type="number" step="0.1" value={weightKg ?? ''} onChange={(e) => setWeightKg(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
+              </div>
+            </div>
+            <div className="rounded-md border p-3 bg-gray-50 text-sm">
+              <span className="font-medium">Blood Pressure:</span> {systolic ?? '-'} / {diastolic ?? '-'} | <span className="font-medium">BMI:</span> {bmi ?? '-'}
+            </div>
+          </div>
+        )}
+
+        {/* Complaint Tab */}
+        {activeTab === 'complaint' && (
+          <div className="bg-white rounded-lg shadow p-4 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Chief Complaint & Symptoms</h2>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Chief Complaint</label>
+              <textarea value={chiefComplaint} onChange={(e) => setChiefComplaint(e.target.value)} rows={3} className="w-full border rounded-md p-2" />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-2">Symptoms</label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {symptomOptions.map((s) => (
+                  <label key={s} className="text-sm flex items-center gap-2 border rounded-md p-2">
+                    <input type="checkbox" checked={symptoms.includes(s)} onChange={() => toggleSymptom(s)} />
+                    {s}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Duration</label>
+                <input type="number" value={durationValue ?? ''} onChange={(e) => setDurationValue(e.target.value ? Number(e.target.value) : null)} className="w-full border rounded-md p-2" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Unit</label>
+                <select value={durationUnit} onChange={(e) => setDurationUnit(e.target.value as 'hours' | 'days' | 'weeks')} className="w-full border rounded-md p-2">
+                  <option value="hours">Hours</option>
+                  <option value="days">Days</option>
+                  <option value="weeks">Weeks</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Pain Scale (1-10): {painScale}</label>
+                <input type="range" min={1} max={10} value={painScale} onChange={(e) => setPainScale(Number(e.target.value))} className="w-full" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Medical History Tab */}
+        {activeTab === 'history' && (
+          <div className="bg-white rounded-lg shadow p-4 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Medical History</h2>
+            <div>
+              <label className="block text-sm text-gray-700 mb-2">Known Conditions</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {conditionOptions.map((c) => (
+                  <label key={c} className="text-sm flex items-center gap-2 border rounded-md p-2">
+                    <input type="checkbox" checked={knownConditions.includes(c)} onChange={() => toggleCondition(c)} />
+                    {c}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Drug Allergies</label>
+                <input value={drugAllergies} onChange={(e) => setDrugAllergies(e.target.value)} className="w-full border rounded-md p-2" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Food Allergies</label>
+                <input value={foodAllergies} onChange={(e) => setFoodAllergies(e.target.value)} className="w-full border rounded-md p-2" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Other Allergies</label>
+                <input value={otherAllergies} onChange={(e) => setOtherAllergies(e.target.value)} className="w-full border rounded-md p-2" />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm text-gray-700">Current Medications</label>
+                <button type="button" onClick={addMedicationRow} className="text-sm px-3 py-1 rounded border hover:bg-gray-50">
+                  + Add
+                </button>
+              </div>
+              <div className="space-y-2">
+                {medications.map((m, i) => (
+                  <div key={i} className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                    <input value={m.name} onChange={(e) => updateMedication(i, 'name', e.target.value)} className="border rounded-md p-2" placeholder="Medication Name" />
+                    <input value={m.dosage} onChange={(e) => updateMedication(i, 'dosage', e.target.value)} className="border rounded-md p-2" placeholder="Dosage" />
+                    <input value={m.frequency} onChange={(e) => updateMedication(i, 'frequency', e.target.value)} className="border rounded-md p-2" placeholder="Frequency" />
+                    <button type="button" onClick={() => removeMedicationRow(i)} className="px-3 py-2 rounded border hover:bg-gray-50">
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Observations Tab */}
+        {activeTab === 'observations' && (
+          <div className="bg-white rounded-lg shadow p-4 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Nursing Notes / Observations</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Patient Appearance</label>
+                <select value={appearance} onChange={(e) => setAppearance(e.target.value as 'normal' | 'weak' | 'distressed')} className="w-full border rounded-md p-2">
+                  <option value="normal">Normal</option>
+                  <option value="weak">Weak</option>
+                  <option value="distressed">Distressed</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Mental Status</label>
+                <select value={mentalStatus} onChange={(e) => setMentalStatus(e.target.value as 'alert' | 'drowsy' | 'confused')} className="w-full border rounded-md p-2">
+                  <option value="alert">Alert</option>
+                  <option value="drowsy">Drowsy</option>
+                  <option value="confused">Confused</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Mobility</label>
+                <select value={mobility} onChange={(e) => setMobility(e.target.value as 'normal' | 'assisted' | 'wheelchair')} className="w-full border rounded-md p-2">
+                  <option value="normal">Normal</option>
+                  <option value="assisted">Assisted</option>
+                  <option value="wheelchair">Wheelchair</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Nursing Notes</label>
+              <textarea value={nursingNotes} onChange={(e) => setNursingNotes(e.target.value)} rows={4} className="w-full border rounded-md p-2" placeholder="Patient complaining of severe headache for 2 days..." />
+            </div>
+          </div>
+        )}
+
+        {/* Triage Tab */}
+        {activeTab === 'triage' && (
+          <div className="bg-white rounded-lg shadow p-4 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Triage Level</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {(Object.keys(triageMeta) as TriageLevel[]).map((level) => (
+                <label key={level} className={`border rounded-md p-3 cursor-pointer ${triageMeta[level].color}`}>
+                  <input
+                    type="radio"
+                    name="triage"
+                    checked={triageLevel === level}
+                    onChange={() => setTriageLevel(level)}
+                    className="mr-2"
+                  />
+                  {triageMeta[level].label}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Attachments Tab */}
+        {activeTab === 'attachments' && (
+          <div className="bg-white rounded-lg shadow p-4 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Attachments</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Attachment Type</label>
+                <select value={attachmentType} onChange={(e) => setAttachmentType(e.target.value as AttachmentType)} className="w-full border rounded-md p-2">
+                  <option value="lab_report">Lab Reports</option>
+                  <option value="prescription">Previous Prescriptions</option>
+                  <option value="wound_image">Wound Images</option>
+                  <option value="ecg_image">ECG Images</option>
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm text-gray-700 mb-1">Upload Files</label>
+                <input type="file" multiple onChange={onUploadAttachments} className="w-full border rounded-md p-2" />
+              </div>
+            </div>
+            {attachments.length > 0 && (
+              <div className="space-y-2">
+                {attachments.map((a) => (
+                  <div key={a.id} className="flex items-center justify-between border rounded-md px-3 py-2 text-sm">
+                    <span>
+                      {a.fileName} <span className="text-gray-500">({a.type})</span>
+                    </span>
+                    <button type="button" onClick={() => removeAttachment(a.id)} className="text-red-600 hover:text-red-800">
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Checklist Tab */}
+        {activeTab === 'checklist' && (
+          <div className="bg-white rounded-lg shadow p-4 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Pre-Doctor Checklist</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <label className="flex items-center gap-2 border rounded-md p-2 text-sm"><input type="checkbox" checked={checkVitalsRecorded} onChange={(e) => setCheckVitalsRecorded(e.target.checked)} /> Vitals Recorded</label>
+              <label className="flex items-center gap-2 border rounded-md p-2 text-sm"><input type="checkbox" checked={checkSymptomsEntered} onChange={(e) => setCheckSymptomsEntered(e.target.checked)} /> Symptoms Entered</label>
+              <label className="flex items-center gap-2 border rounded-md p-2 text-sm"><input type="checkbox" checked={checkHistoryChecked} onChange={(e) => setCheckHistoryChecked(e.target.checked)} /> Medical History Checked</label>
+              <label className="flex items-center gap-2 border rounded-md p-2 text-sm"><input type="checkbox" checked={checkAllergiesRecorded} onChange={(e) => setCheckAllergiesRecorded(e.target.checked)} /> Allergies Recorded</label>
+            </div>
+
+            <div className="flex flex-wrap gap-2 justify-end">
+              <button type="button" onClick={resetForm} className="px-4 py-2 rounded-lg border bg-white hover:bg-gray-50">
+                Reset Form
+              </button>
+              <button type="button" onClick={onSendToDoctorQueue} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">
+                Send to Doctor Queue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Recent Tab */}
+        {activeTab === 'recent' && (
+          <div className="bg-white rounded-lg shadow p-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Recent Pre-Doctor Consultations</h2>
+            {recentRecords.length === 0 ? (
+              <p className="text-sm text-gray-600">No records yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {recentRecords.map((r) => (
+                  <div key={r.id} className="border rounded-md p-3 text-sm">
+                    <div className="font-medium text-gray-900">
+                      {r.patientMrn} - Token {r.queueToken}
+                    </div>
+                    <div className="text-gray-600">
+                      {new Date(r.createdAt).toLocaleString()} - {r.nurseName} - {triageMeta[r.triageLevel].label}
+                    </div>
+                    <div className="text-gray-700 mt-1">Chief Complaint: {r.chiefComplaint}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
