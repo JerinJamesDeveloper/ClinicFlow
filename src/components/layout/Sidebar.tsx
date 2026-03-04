@@ -10,11 +10,13 @@ import {
   ShoppingBagIcon,
   Cog6ToothIcon,
   ClipboardDocumentListIcon,
+  ClipboardDocumentCheckIcon,
   HeartIcon,
 } from '@heroicons/react/24/outline';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: HomeIcon, roles: ['admin', 'doctor', 'lab_staff', 'pharmacist', 'front_desk'] },
+  { name: 'Dashboard', href: '/', icon: HomeIcon, roles: ['admin', 'doctor', 'lab_staff', 'pharmacist', 'front_desk', 'nurse'] },
+  { name: 'Pre-Doctor', href: '/nurse/pre-doctor', icon: ClipboardDocumentCheckIcon, roles: ['admin', 'clinic_admin', 'nurse'] },
   { name: 'Front Bench', href: '/front-bench', icon: ClipboardDocumentListIcon, roles: ['admin', 'front_desk'] },
   { name: 'Doctor Workbench', href: '/doctor', icon: ClipboardDocumentListIcon, roles: ['admin', 'doctor'] },
   { name: 'Lab Tests', href: '/lab', icon: BeakerIcon, roles: ['admin', 'lab_staff', 'doctor'] },

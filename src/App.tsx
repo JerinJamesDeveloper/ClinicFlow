@@ -17,6 +17,7 @@ import PharmacyDashboard from './pages/pharmacy/PharmacyDashboard';
 import DispenseMedicine from './pages/pharmacy/DispenseMedicine';
 import ClinicSettings from './pages/admin/ClinicSettings';
 import UserManagement from './pages/admin/UserManagement';
+import PreDoctorConsultation from './pages/nurse/PreDoctorConsultation';
 import { AuthProvider } from './providers/AuthProvider';
 import { ClinicProvider } from './providers/ClinicProvider';
 import { useAuth } from './hooks/useAuth';
@@ -59,8 +60,16 @@ function AppContent() {
             <Route
               path="/"
               element={
-                <ProtectedRoute allowedRoles={['clinic_admin', 'doctor', 'lab_staff', 'pharmacist', 'front_desk']}>
+                <ProtectedRoute allowedRoles={['clinic_admin', 'doctor', 'lab_staff', 'pharmacist', 'front_desk', 'nurse']}>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/nurse/pre-doctor"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'clinic_admin', 'nurse']}>
+                  <PreDoctorConsultation />
                 </ProtectedRoute>
               }
             />

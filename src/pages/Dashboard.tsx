@@ -180,6 +180,7 @@ const Dashboard: React.FC = () => {
       </Routes>
     ),
     front_desk: <Navigate to="/front-bench" replace />,
+    nurse: <Navigate to="/nurse/pre-doctor" replace />,
     doctor: (
       <Routes>
         <Route path="/" element={<DoctorDashboard />} />

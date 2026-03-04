@@ -45,6 +45,16 @@ export const mockUsers: User[] = [
     specialization: 'Cardiology',
   },
   {
+    id: 7,
+    clinic_id: 1,
+    name: 'Nurse Priya',
+    email: 'nurse@clinic.com',
+    role: 'nurse',
+    is_active: true,
+    created_at: '2024-01-01T00:00:00Z',
+    last_login: '2024-03-15T08:00:00Z',
+  },
+  {
     id: 3,
     clinic_id: 1,
     name: 'Lab Technician',

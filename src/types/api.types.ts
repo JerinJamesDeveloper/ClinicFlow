@@ -4,7 +4,7 @@ export interface User {
   clinic_id: number;
   name: string;
   email: string;
-  role: 'admin' | 'super_admin' | 'clinic_admin' | 'front_desk' | 'doctor' | 'lab_staff' | 'pharmacist' | 'patient';
+  role: 'admin' | 'super_admin' | 'clinic_admin' | 'front_desk' | 'doctor' | 'lab_staff' | 'pharmacist' | 'patient' | 'nurse';
   is_active: boolean;
   created_at: string;
   last_login?: string;

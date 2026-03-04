@@ -290,6 +290,10 @@ function isAuthError(error: unknown): error is AuthError {
                   <p className="font-medium text-surface-700">Front Desk</p>
                   <p className="text-surface-500">frontdesk@clinic.com</p>
                 </div>
+                <div className="p-2 bg-white rounded-lg">
+                  <p className="font-medium text-surface-700">Nurse</p>
+                  <p className="text-surface-500">nurse@clinic.com</p>
+                </div>
                 {import.meta.env.DEV && (
                   <div className="p-2 bg-primary-50 rounded-lg">
                     <p className="font-medium text-primary-700">Dev Admin</p>
