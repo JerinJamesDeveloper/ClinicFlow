@@ -84,7 +84,7 @@ function AppContent() {
             />
 
             <Route
-              path="/doctor"
+              path="/doctor/*"
               element={
                 <ProtectedRoute allowedRoles={['clinic_admin', 'doctor']}>
                   <DoctorWorkbench />

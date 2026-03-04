@@ -25,12 +25,13 @@
 
 ## Overview
 
-**ClinicFlow Web** is a comprehensive clinic management system designed to streamline healthcare operations. It provides a multi-role platform for managing patients, appointments, consultations, laboratory tests, and pharmacy operations all in one unified application.
+**ClinicFlow Web** is a comprehensive clinic management system designed to streamline healthcare operations. It provides a multi-role platform for managing patients, appointments, consultations, laboratory tests, pharmacy operations, and nursing workflows all in one unified application.
 
 The system supports various healthcare workflows including:
 - Patient registration and history management
 - Appointment scheduling and calendar management
 - Doctor consultation with SOAP notes and e-prescriptions
+- Pre-doctor consultation nursing assessments
 - Laboratory test ordering and result tracking
 - Pharmacy prescription management and dispensing
 - Front desk operations (queue management, billing, insurance)
@@ -47,6 +48,13 @@ The system supports various healthcare workflows including:
 - **Patient Summary**: Medical history, previous visits, prescriptions
 - **Voice-to-Text**: Voice input for clinical notes
 - **Template System**: Reusable SOAP note templates
+
+### 🩺 Nurse Module
+- **Pre-Doctor Consultation**: Patient vital signs recording, preliminary assessment
+- **Patient Triage**: Priority assessment and categorization
+- **Vital Signs Recording**: Blood pressure, temperature, weight, height, pulse
+- **Nursing Notes**: Pre-consultation observations and notes
+- **Queue Management**: Patient preparation and flow coordination
 
 ### 🏥 Patient Management
 - Patient registration and profile management
@@ -136,8 +144,6 @@ clinic-flow-web/
 │   ├── hooks/                 # Custom React hooks
 │   │   ├── useApi.ts
 │   │   ├── useAuth.tsx
-│   │   ├── useAppointments.ts
-│   │   ├── usePatients.ts
 │   │   ├── useClinic.ts
 │   │   ├── useWebSocket.ts
 │   │   ├── doctor/
@@ -155,9 +161,6 @@ clinic-flow-web/
 │   │   │   ├── AdminDashboard.tsx
 │   │   │   ├── ClinicSettings.tsx
 │   │   │   └── UserManagement.tsx
-│   │   ├── appointments/    # Appointment pages
-│   │   │   ├── AppointmentCalendar.tsx
-│   │   │   └── AppointmentDetails.tsx
 │   │   ├── auth/            # Authentication pages
 │   │   │   ├── LoginPage.tsx
 │   │   │   ├── RegisterClinic.tsx
@@ -165,9 +168,18 @@ clinic-flow-web/
 │   │   ├── doctor/          # Doctor pages
 │   │   │   ├── DoctorWorkbench.tsx
 │   │   │   ├── PatientVisit.tsx
-│   │   │   └── PatientSummary.tsx
+│   │   │   ├── PatientSummary.tsx
+│   │   │   └── workbench/   # Doctor workbench pages
+│   │   │       ├── DoctorAssessmentPage.tsx
+│   │   │       ├── DoctorDiagnosisPage.tsx
+│   │   │       ├── DoctorLabImagingPage.tsx
+│   │   │       ├── DoctorNotesFollowupPage.tsx
+│   │   │       ├── DoctorPrescriptionsPage.tsx
+│   │   │       ├── DoctorSummaryPage.tsx
+│   │   │       ├── DoctorWorkbenchLayout.tsx
+│   │   │       ├── store.ts
+│   │   │       └── types.ts
 │   │   ├── frontbench/      # Front bench pages
-│   │   │   ├── FrontBench.tsx
 │   │   │   ├── FrontBenchHome.tsx
 │   │   │   ├── FrontBenchLayout.tsx
 │   │   │   ├── QueueManagement.tsx
@@ -181,10 +193,9 @@ clinic-flow-web/
 │   │   ├── lab/             # Lab pages
 │   │   │   ├── LabDashboard.tsx
 │   │   │   └── TestResults.tsx
+│   │   ├── nurse/           # Nurse pages
+│   │   │   └── PreDoctorConsultation.tsx
 │   │   ├── patients/        # Patient pages
-│   │   │   ├── PatientList.tsx
-│   │   │   ├── PatientDetails.tsx
-│   │   │   └── PatientBooking.tsx
 │   │   └── pharmacy/        # Pharmacy pages
 │   │       ├── PharmacyDashboard.tsx
 │   │       ├── DispenseMedicine.tsx
@@ -230,6 +241,7 @@ clinic-flow-web/
 ├── tailwind.config.js
 ├── tsconfig.json
 ├── vite.config.ts
+├── API.md                  # API Documentation
 └── README.md
 ```
 
@@ -242,6 +254,7 @@ clinic-flow-web/
 | `clinic_admin` | Clinic Administrator | Full access to all features, settings, user management |
 | `super_admin` | Super Administrator | System-wide admin access |
 | `doctor` | Doctor/Physician | Patient consultations, prescriptions, lab orders |
+| `nurse` | Nurse | Pre-doctor consultations, vital signs, patient preparation |
 | `lab_staff` | Laboratory Staff | Lab test management, result entry |
 | `pharmacist` | Pharmacist | Prescription dispensing, pharmacy management |
 | `front_desk` | Front Desk Staff | Queue management, scheduling, billing, patient registration |
@@ -256,6 +269,29 @@ The application uses a protected route system to enforce role-based access:
   <DoctorWorkbench />
 </ProtectedRoute>
 ```
+
+---
+
+## Application Routes
+
+| Path | Component | Roles Allowed |
+|------|-----------|---------------|
+| `/` | Dashboard | clinic_admin, doctor, lab_staff, pharmacist, front_desk, nurse |
+| `/nurse/pre-doctor` | PreDoctorConsultation | admin, clinic_admin, nurse |
+| `/front-bench/*` | FrontBenchLayout | admin, front_desk |
+| `/doctor/*` | DoctorWorkbench | clinic_admin, doctor |
+| `/doctor/visit/:id` | PatientVisit | clinic_admin, doctor |
+| `/doctor/patient/:id` | PatientSummary | clinic_admin, doctor |
+| `/lab` | LabDashboard | clinic_admin, lab_staff, doctor |
+| `/lab/results/:id` | TestResults | clinic_admin, lab_staff |
+| `/pharmacy` | PharmacyDashboard | pharmacist, clinic_admin |
+| `/pharmacy/dispense` | DispenseMedicine | clinic_admin, pharmacist |
+| `/admin` | ClinicSettings | clinic_admin, super_admin |
+| `/admin/users` | UserManagement | clinic_admin, super_admin |
+| `/admin/settings` | ClinicSettings | clinic_admin, super_admin |
+| `/login` | LoginPage | Public |
+| `/register-clinic` | RegisterClinic | Public |
+| `/forgot-password` | ForgotPassword | Public |
 
 ---
 
@@ -376,6 +412,20 @@ The axios client is configured in `src/services/api/client.ts` with:
 ### Charts
 
 - **AppointmentChart**: Appointment statistics visualization
+
+---
+
+## Recent Updates
+
+### Modernization Tasks (Completed)
+- [x] Updated tailwind.config.js - Added custom colors, shadows, animations
+- [x] Enhanced src/index.css - Added glassmorphism, animations, scrollbar styling
+- [x] Modernized Sidebar.tsx - Gradients, hover states, active indicators
+- [x] Modernized Header.tsx - Backdrop blur, notification dropdown
+- [x] Enhanced DataTable.tsx - Zebra striping, hover effects, modern pagination
+- [x] Enhanced AdminDashboard.tsx - Gradient stat cards, activity timeline
+- [x] Modernized LoginPage.tsx - Better visual effects
+- [x] Modernized PatientList.tsx - Better styling, stats, filters
 
 ---
 
