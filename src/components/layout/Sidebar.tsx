@@ -5,8 +5,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { isDevAdmin } from '../../utils/roles';
 import {
   HomeIcon,
-  UsersIcon,
-  CalendarIcon,
   BeakerIcon,
   DocumentTextIcon,
   ShoppingBagIcon,
@@ -18,8 +16,6 @@ import {
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon, roles: ['admin', 'doctor', 'lab_staff', 'pharmacist', 'front_desk'] },
   { name: 'Front Bench', href: '/front-bench', icon: ClipboardDocumentListIcon, roles: ['admin', 'front_desk'] },
-  { name: 'Patients', href: '/patients', icon: UsersIcon, roles: ['admin', 'doctor', 'front_desk'] },
-  { name: 'Appointments', href: '/appointments', icon: CalendarIcon, roles: ['admin', 'doctor', 'front_desk'] },
   { name: 'Doctor Workbench', href: '/doctor', icon: ClipboardDocumentListIcon, roles: ['admin', 'doctor'] },
   { name: 'Lab Tests', href: '/lab', icon: BeakerIcon, roles: ['admin', 'lab_staff', 'doctor'] },
   { name: 'Prescriptions', href: '/pharmacy', icon: DocumentTextIcon, roles: ['admin', 'pharmacist'] },
@@ -122,3 +118,4 @@ const Sidebar: React.FC = () => {
 };
 
 export default Sidebar;
+

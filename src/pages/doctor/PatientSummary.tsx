@@ -89,8 +89,8 @@ const PatientSummary: React.FC = () => {
           <button onClick={() => navigate(-1)} className="px-4 py-2 rounded-lg border bg-white hover:bg-gray-50">
             Back
           </button>
-          <button onClick={() => navigate(`/patients/${patientId}`)} className="px-4 py-2 rounded-lg border bg-white hover:bg-gray-50">
-            Full Profile
+          <button onClick={() => navigate('/front-bench/patients')} className="px-4 py-2 rounded-lg border bg-white hover:bg-gray-50">
+            Open In Front Bench
           </button>
         </div>
       </div>
@@ -167,4 +167,3 @@ const PatientSummary: React.FC = () => {
 };
 
 export default PatientSummary;
-
