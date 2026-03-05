@@ -1,190 +1,270 @@
-// src/pages/lab/LabDashboard.tsx
-import React, { useState } from 'react';
-import { useQuery, useMutation } from 'react-query';
-import { LabService } from '../../services/api/lab.service';
-import { useWebSocket } from '../../hooks/useWebSocket';
-import StatusBadge from '../../components/common/StatusBadge';
+import React, { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../hooks/useAuth';
+import { LabStore } from '../../services/local/lab.store';
+import type { LabRequestStatus } from '../../types/lab.types';
+
+type TabKey = 'requests' | 'results' | 'masters' | 'qc' | 'reports';
+
+const statusClasses: Record<LabRequestStatus, string> = {
+  pending_collection: 'bg-amber-100 text-amber-800',
+  collected: 'bg-sky-100 text-sky-800',
+  rejected: 'bg-rose-100 text-rose-800',
+  in_progress: 'bg-indigo-100 text-indigo-800',
+  result_entered: 'bg-violet-100 text-violet-800',
+  verified: 'bg-cyan-100 text-cyan-800',
+  released: 'bg-emerald-100 text-emerald-800',
+  outsourced: 'bg-orange-100 text-orange-800',
+};
 
 const LabDashboard: React.FC = () => {
-  const [selectedTest, setSelectedTest] = useState<any>(null);
-  const [resultText, setResultText] = useState('');
-  const [resultFile, setResultFile] = useState<File | null>(null);
+  const { user } = useAuth();
+  const currentUser = user?.name || 'Staff';
+  const canVerify = user?.role === 'clinic_admin' || user?.role === 'lab_staff';
+  const [tab, setTab] = useState<TabKey>('requests');
+  const [version, setVersion] = useState(0);
+  const [selectedId, setSelectedId] = useState('');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<'all' | LabRequestStatus>('all');
+  const [resultDraft, setResultDraft] = useState<Record<string, string>>({});
+  const [reportMrn, setReportMrn] = useState('');
+  const [componentCode, setComponentCode] = useState('A1C');
 
-  // Fetch pending tests
-  const { data: pendingTests, refetch } = useQuery(
-    'pendingLabTests',
-    () => LabService.getPendingTests()
-  );
+  const refresh = () => setVersion((v) => v + 1);
+  const master = useMemo(() => (version, LabStore.getMasterData()), [version]);
+  const requests = useMemo(() => (version, LabStore.getRequests()), [version]);
+  const qcLogs = useMemo(() => (version, LabStore.getQcLogs()), [version]);
+  const reagents = useMemo(() => (version, LabStore.getReagents()), [version]);
+  const workload = useMemo(() => LabStore.workloadStats(), [version]);
+  const trend = useMemo(() => (reportMrn.trim() ? LabStore.cumulativeTrend(reportMrn.trim(), componentCode) : []), [reportMrn, componentCode, version]);
 
-  // Real-time updates for new test requests
-  useWebSocket('appointment_update', (data) => {
-    const event = data as any;
-    if (event?.type === 'lab_requested') {
-      toast('New lab test requested');
-      refetch();
-    }
+  const filtered = requests.filter((request) => {
+    if (status !== 'all' && request.status !== status) return false;
+    if (!search.trim()) return true;
+    const t = search.toLowerCase();
+    return `${request.patientName} ${request.patientMrn} ${request.panelCode}`.toLowerCase().includes(t);
   });
+  const active = filtered.find((request) => request.id === selectedId) ?? filtered[0];
+  const panicCount = requests.filter((request) => request.results.some((result) => result.panic) && !request.panicAcknowledgedAt).length;
 
-  // Update test results mutation
-  const updateResults = useMutation(
-    ({ testId, data }: { testId: number; data: any }) =>
-      LabService.updateTestResults(testId, data),
-    {
-      onSuccess: () => {
-        toast.success('Test results uploaded');
-        setSelectedTest(null);
-        refetch();
-      },
-    }
-  );
+  const updateResultDraft = () => {
+    if (!active) return;
+    const next: Record<string, string> = {};
+    active.results.forEach((result) => {
+      next[result.componentCode] = result.value == null ? '' : String(result.value);
+    });
+    setResultDraft(next);
+  };
 
-  const handleSubmitResults = () => {
-    if (!selectedTest) return;
-
-    if (resultFile) {
-      LabService.uploadResultFile(selectedTest.id, resultFile, resultText).then(() => {
-        toast.success('Results uploaded successfully');
-        setSelectedTest(null);
-        refetch();
-      });
-    } else {
-      updateResults.mutate({
-        testId: selectedTest.id,
-        data: {
-          status: 'completed',
-          result_text: resultText,
-        },
-      });
-    }
+  const submitResults = () => {
+    if (!active) return;
+    const values = active.results.map((result) => ({
+      componentCode: result.componentCode,
+      value: resultDraft[result.componentCode] === '' ? null : Number(resultDraft[result.componentCode]),
+    }));
+    LabStore.enterResults(active.id, currentUser, values);
+    refresh();
+    toast.success('Result entered by technician');
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Laboratory Dashboard</h1>
-
-      <div className="grid grid-cols-3 gap-6">
-        {/* Pending Tests List */}
-        <div className="col-span-1 bg-white rounded-lg shadow p-4">
-          <h2 className="text-lg font-semibold mb-4">Pending Tests</h2>
-          <div className="space-y-3">
-            {pendingTests?.map((test: any) => (
-              <div
-                key={test.id}
-                onClick={() => setSelectedTest(test)}
-                className={`p-3 border rounded-lg cursor-pointer ${
-                  selectedTest?.id === test.id
-                    ? 'border-primary-500 bg-primary-50'
-                    : 'hover:bg-gray-50'
-                }`}
-              >
-                <div className="font-medium">{test.test_name}</div>
-                <div className="text-sm text-gray-600">
-                  Patient: {test.patient?.name}
-                </div>
-                <div className="flex items-center justify-between mt-2">
-                  <StatusBadge status={test.priority} variant="warning" />
-                  <span className="text-xs text-gray-500">
-                    {new Date(test.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+    <div className="p-4 md:p-6 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-bold">Lab Operations Hub</h1>
+          <p className="text-sm text-gray-600">Request dashboard, specimen flow, two-step validation, QC, and reports.</p>
         </div>
-
-        {/* Test Results Entry */}
-        <div className="col-span-2 bg-white rounded-lg shadow p-4">
-          {selectedTest ? (
-            <>
-              <h2 className="text-lg font-semibold mb-4">
-                Enter Results: {selectedTest.test_name}
-              </h2>
-
-              <div className="space-y-4">
-                {/* Patient Info */}
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <p><span className="font-medium">Patient:</span> {selectedTest.patient?.name}</p>
-                  <p><span className="font-medium">Requested by:</span> Dr. {selectedTest.doctor?.name}</p>
-                  <p><span className="font-medium">Date:</span> {new Date(selectedTest.created_at).toLocaleString()}</p>
-                </div>
-
-                {/* Result Text */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Result / Observations
-                  </label>
-                  <textarea
-                    value={resultText}
-                    onChange={(e) => setResultText(e.target.value)}
-                    rows={5}
-                    className="mt-1 block w-full border rounded-md shadow-sm p-2"
-                    placeholder="Enter test results..."
-                  />
-                </div>
-
-                {/* Reference Range */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Reference Range (optional)
-                  </label>
-                  <input
-                    type="text"
-                    className="mt-1 block w-full border rounded-md shadow-sm p-2"
-                    placeholder="e.g., 4.0-6.0 million cells/mcL"
-                  />
-                </div>
-
-                {/* File Upload */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Upload Report (PDF/Image)
-                  </label>
-                  <input
-                    type="file"
-                    onChange={(e) => setResultFile(e.target.files?.[0] || null)}
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    className="mt-1 block w-full"
-                  />
-                </div>
-
-                {/* Abnormal Flag */}
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="abnormal"
-                    className="h-4 w-4 text-primary-600 rounded"
-                  />
-                  <label htmlFor="abnormal" className="ml-2 text-sm text-gray-700">
-                    Mark as abnormal
-                  </label>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex space-x-3 pt-4">
-                  <button
-                    onClick={handleSubmitResults}
-                    disabled={!resultText && !resultFile}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
-                  >
-                    Submit Results
-                  </button>
-                  <button
-                    onClick={() => setSelectedTest(null)}
-                    className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="text-center text-gray-500 py-12">
-              Select a test to enter results
-            </div>
-          )}
+        <div className="flex flex-wrap gap-2">
+          {(['requests', 'results', 'masters', 'qc', 'reports'] as TabKey[]).map((key) => (
+            <button key={key} onClick={() => setTab(key)} className={`px-3 py-2 rounded text-sm ${tab === key ? 'bg-primary-600 text-white' : 'bg-white border'}`}>
+              {key.toUpperCase()}
+            </button>
+          ))}
         </div>
       </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="bg-white border rounded p-3"><p className="text-xs text-gray-500">Pending</p><p className="font-bold">{requests.filter((request) => request.status === 'pending_collection').length}</p></div>
+        <div className="bg-white border rounded p-3"><p className="text-xs text-gray-500">Collected</p><p className="font-bold">{requests.filter((request) => request.status === 'collected').length}</p></div>
+        <div className="bg-white border rounded p-3"><p className="text-xs text-gray-500">Verified/Released</p><p className="font-bold">{requests.filter((request) => request.status === 'verified' || request.status === 'released').length}</p></div>
+        <div className="bg-white border rounded p-3"><p className="text-xs text-gray-500">Panic Alerts</p><p className="font-bold text-rose-700">{panicCount}</p></div>
+      </div>
+
+      {tab === 'requests' && (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <div className="bg-white border rounded p-3 space-y-2">
+            <input value={search} onChange={(e) => setSearch(e.target.value)} className="w-full border rounded p-2 text-sm" placeholder="Search patient/MRN/test" />
+            <select value={status} onChange={(e) => setStatus(e.target.value as 'all' | LabRequestStatus)} className="w-full border rounded p-2 text-sm">
+              <option value="all">All statuses</option>
+              <option value="pending_collection">Pending collection</option>
+              <option value="collected">Collected</option>
+              <option value="result_entered">Result entered</option>
+              <option value="verified">Verified</option>
+              <option value="released">Released</option>
+              <option value="rejected">Rejected</option>
+              <option value="outsourced">Outsourced</option>
+            </select>
+            <div className="space-y-2 max-h-[60vh] overflow-auto">
+              {filtered.map((request) => (
+                <button key={request.id} onClick={() => { setSelectedId(request.id); setResultDraft({}); }} className={`w-full border rounded p-2 text-left ${active?.id === request.id ? 'bg-primary-50 border-primary-400' : ''}`}>
+                  <div className="text-sm font-semibold">{request.patientName}</div>
+                  <div className="text-xs text-gray-600">{request.patientMrn} • {request.panelCode}</div>
+                  <div className="mt-1 flex items-center justify-between">
+                    <span className={`px-2 py-1 rounded-full text-xs ${statusClasses[request.status]}`}>{request.status.replace(/_/g, ' ')}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${request.billingClearance === 'cleared' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{request.billingClearance}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="xl:col-span-2 bg-white border rounded p-4 space-y-3">
+            {!active && <p className="text-sm text-gray-500">No lab requests.</p>}
+            {active && (
+              <>
+                <h2 className="font-semibold">{active.panelName} ({active.panelCode})</h2>
+                <p className="text-sm text-gray-600">{active.patientName} • {active.patientMrn} • Ordered by {active.doctorName}</p>
+                <p className="text-xs">Barcode: <span className="font-mono">{active.specimenBarcode}</span></p>
+                <p className="text-xs">Billing invoice: {active.billingInvoiceId || 'NA'} ({active.billingClearance})</p>
+                <div className="text-sm">
+                  <p className="font-medium">Nurse instructions</p>
+                  <ul className="list-disc pl-5 text-xs">{active.instructions.map((instruction) => <li key={instruction}>{instruction}</li>)}</ul>
+                </div>
+                <div className="flex flex-wrap gap-2 text-sm">
+                  <button className="px-3 py-2 border rounded" onClick={() => { navigator.clipboard.writeText(active.specimenBarcode).catch(() => undefined); toast.success('Barcode copied for label printing'); }}>Print Label</button>
+                  <button className="px-3 py-2 border rounded" onClick={() => { LabStore.syncFinancialClearance(); refresh(); }}>Refresh Clearance</button>
+                  <button className="px-3 py-2 bg-emerald-600 text-white rounded disabled:opacity-50" disabled={active.status !== 'pending_collection' || active.billingClearance !== 'cleared'} onClick={() => { LabStore.collectSpecimen(active.id, currentUser); refresh(); }}>Collect</button>
+                  <button className="px-3 py-2 bg-rose-600 text-white rounded" onClick={() => { LabStore.rejectSpecimen(active.id, currentUser, 'Specimen quality issue'); refresh(); }}>Reject</button>
+                  <select className="px-2 py-2 border rounded" onChange={(e) => setStatus(status)} value={status}>
+                    <option value={status}>Use master tab to manage outsource labs</option>
+                  </select>
+                  <button className="px-3 py-2 border rounded" onClick={() => { if (master.outsourcedLabs[0]) { LabStore.sendToOutsourcedLab(active.id, master.outsourcedLabs[0].id); refresh(); } }}>Send Outsourced</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === 'results' && active && (
+        <div className="bg-white border rounded p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Result Entry & Validation</h2>
+            <span className={`px-2 py-1 rounded-full text-xs ${statusClasses[active.status]}`}>{active.status.replace(/_/g, ' ')}</span>
+          </div>
+          <div className="overflow-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="text-left border-b"><th className="py-2">Component</th><th>Value</th><th>Reference</th><th>Flag</th></tr></thead>
+              <tbody>
+                {active.results.map((result) => {
+                  const input = resultDraft[result.componentCode] ?? (result.value == null ? '' : String(result.value));
+                  const numeric = input === '' ? null : Number(input);
+                  const abnormal = numeric != null && ((result.refLow != null && numeric < result.refLow) || (result.refHigh != null && numeric > result.refHigh));
+                  return (
+                    <tr key={result.componentCode} className={abnormal ? 'bg-amber-50' : ''}>
+                      <td className="py-2">{result.componentName}</td>
+                      <td><input value={input} onChange={(e) => setResultDraft((prev) => ({ ...prev, [result.componentCode]: e.target.value }))} className="w-24 border rounded p-1" /> {result.unitSymbol}</td>
+                      <td>{result.refLow ?? '-'} - {result.refHigh ?? '-'}</td>
+                      <td>{abnormal ? 'Abnormal' : 'Normal'}{result.panic ? ' / Panic' : ''}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex flex-wrap gap-2 text-sm">
+            <button className="px-3 py-2 bg-primary-600 text-white rounded" onClick={submitResults}>Technician Submit</button>
+            <button className="px-3 py-2 bg-emerald-600 text-white rounded disabled:opacity-50" disabled={!canVerify || active.status !== 'result_entered'} onClick={() => { if (active.enteredBy === currentUser) return toast.error('Verifier must be different from technician'); LabStore.verifyResults(active.id, currentUser, true); refresh(); }}>Verify + Release</button>
+            <button className="px-3 py-2 border rounded" onClick={updateResultDraft}>Load Existing Values</button>
+            <button className="px-3 py-2 border rounded" onClick={() => { if (active.results.some((result) => result.panic)) { LabStore.acknowledgePanic(active.id, currentUser); refresh(); } }}>Acknowledge Panic</button>
+          </div>
+          <div className="text-xs text-gray-600">
+            Doctor visibility: verified and released reports are available with abnormal/panic flags in this shared queue.
+          </div>
+        </div>
+      )}
+
+      {tab === 'masters' && (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="bg-white border rounded p-4 space-y-3">
+            <h2 className="font-semibold">Master Data</h2>
+            <div className="text-sm">Panels: {master.panels.length} • Ranges: {master.ranges.length} • Units: {master.units.length}</div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <input placeholder="Unit symbol" className="border rounded p-2" onChange={(e) => setSearch(e.target.value)} value={search} />
+              <input placeholder="Unit label" className="border rounded p-2" onChange={(e) => setSelectedId(e.target.value)} value={selectedId} />
+              <button className="px-3 py-2 border rounded col-span-2" onClick={() => { if (search.trim() && selectedId.trim()) { LabStore.addUnit({ symbol: search.trim(), label: selectedId.trim() }); refresh(); } }}>Add Unit</button>
+            </div>
+            <div className="text-xs max-h-44 overflow-auto space-y-1">
+              {master.panels.map((panel) => <div key={panel.id} className="border rounded p-2">{panel.code} - {panel.name} ({panel.components.length} components)</div>)}
+            </div>
+          </div>
+          <div className="bg-white border rounded p-4 space-y-3">
+            <h2 className="font-semibold">Packages / Outsourced</h2>
+            <button className="px-3 py-2 border rounded text-sm" onClick={() => { if (master.panels.length >= 2) { LabStore.addPackageDeal({ name: 'Health Check Package', panelIds: master.panels.slice(0, 2).map((panel) => panel.id), discountPercent: 15 }); refresh(); } }}>Create sample package deal</button>
+            <button className="px-3 py-2 border rounded text-sm ml-2" onClick={() => { LabStore.addOutsourcedLabPartner({ name: 'External Partner', contact: '+91-9000000000', slaHours: 24 }); refresh(); }}>Add outsourced lab</button>
+            <div className="text-xs space-y-1">
+              {master.packageDeals.map((pkg) => <div key={pkg.id} className="border rounded p-2">{pkg.name} ({pkg.discountPercent}% off)</div>)}
+              {master.outsourcedLabs.map((partner) => <div key={partner.id} className="border rounded p-2">{partner.name} • SLA {partner.slaHours}h</div>)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'qc' && (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="bg-white border rounded p-4 space-y-2">
+            <h2 className="font-semibold">QC Logs</h2>
+            <button className="px-3 py-2 border rounded text-sm" onClick={() => { LabStore.addQcLog({ panelCode: 'CBC', level: 'L1', expected: 10, observed: 10.2, recordedBy: currentUser }); refresh(); }}>Add sample QC log</button>
+            <div className="max-h-52 overflow-auto text-xs space-y-1">
+              {qcLogs.map((log) => <div key={log.id} className={`border rounded p-2 ${log.passed ? 'bg-emerald-50' : 'bg-rose-50'}`}>{log.panelCode} {log.level} {log.observed}/{log.expected} {log.passed ? 'PASS' : 'FAIL'}</div>)}
+            </div>
+          </div>
+          <div className="bg-white border rounded p-4 space-y-2">
+            <h2 className="font-semibold">Reagent Inventory & Analyzer Import</h2>
+            <button className="px-3 py-2 border rounded text-sm" onClick={() => { LabStore.addReagent({ name: 'General Reagent', panelCode: 'CBC', stockUnits: 10, reorderLevel: 5, unitLabel: 'kits' }); refresh(); }}>Add reagent</button>
+            <button className="px-3 py-2 border rounded text-sm ml-2" onClick={() => { if (active) { const values = active.results.map((result) => ({ componentCode: result.componentCode, value: result.refLow != null && result.refHigh != null ? Number(((result.refLow + result.refHigh) / 2).toFixed(2)) : 1 })); LabStore.enterResults(active.id, `${currentUser} (Analyzer)`, values); refresh(); } }}>Import analyzer sample</button>
+            <div className="max-h-52 overflow-auto text-xs space-y-1">
+              {reagents.map((reagent) => (
+                <div key={reagent.id} className={`border rounded p-2 ${reagent.stockUnits <= reagent.reorderLevel ? 'bg-rose-50' : ''}`}>
+                  {reagent.name} ({reagent.panelCode}) - {reagent.stockUnits} {reagent.unitLabel}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'reports' && (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="bg-white border rounded p-4 space-y-3">
+            <h2 className="font-semibold">Patient Report (Print)</h2>
+            {active ? (
+              <div className="border rounded p-3 text-sm">
+                <p className="font-semibold">ClinicFlow Lab Report</p>
+                <p>{active.patientName} ({active.patientMrn}) • {active.panelCode}</p>
+                <div className="mt-2 space-y-1 text-xs">
+                  {active.results.map((result) => <div key={result.componentCode}>{result.componentName}: {result.value ?? '-'} {result.unitSymbol} ({result.abnormal ? 'Abnormal' : 'Normal'})</div>)}
+                </div>
+              </div>
+            ) : <p className="text-sm text-gray-500">Select a request to print.</p>}
+            <button className="px-3 py-2 bg-primary-600 text-white rounded text-sm" onClick={() => window.print()}>Print Final Report</button>
+          </div>
+          <div className="bg-white border rounded p-4 space-y-3">
+            <h2 className="font-semibold">Cumulative Trends & Workload</h2>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <input value={reportMrn} onChange={(e) => setReportMrn(e.target.value)} className="border rounded p-2" placeholder="Patient MRN" />
+              <input value={componentCode} onChange={(e) => setComponentCode(e.target.value)} className="border rounded p-2" placeholder="Component code" />
+            </div>
+            <div className="border rounded p-2 max-h-28 overflow-auto text-xs">
+              {trend.map((point, idx) => <div key={`${point.at}_${idx}`}>{new Date(point.at).toLocaleDateString()}: {point.value}</div>)}
+              {trend.length === 0 && <p>No trend data yet.</p>}
+            </div>
+            <div className="border rounded p-2 max-h-32 overflow-auto text-xs">
+              {workload.map((entry) => <div key={entry.technician}>{entry.technician}: {entry.entries} tests, avg TAT {entry.avgTatMinutes}m</div>)}
+              {workload.length === 0 && <p>No workload stats yet.</p>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
