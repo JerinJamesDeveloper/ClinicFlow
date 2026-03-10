@@ -16,13 +16,13 @@ import {
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon, roles: ['admin', 'doctor', 'lab_staff', 'pharmacist', 'front_desk', 'nurse'] },
-  { name: 'Pre-Doctor', href: '/nurse/pre-doctor', icon: ClipboardDocumentCheckIcon, roles: ['admin', 'clinic_admin', 'nurse'] },
+  { name: 'Pre-Doctor', href: '/nurse/pre-doctor', icon: ClipboardDocumentCheckIcon, roles: ['admin', 'clinic_admin', 'nurse', 'front_desk'] },
   { name: 'Front Bench', href: '/front-bench', icon: ClipboardDocumentListIcon, roles: ['admin', 'front_desk'] },
-  { name: 'Doctor Workbench', href: '/doctor', icon: ClipboardDocumentListIcon, roles: ['admin', 'doctor'] },
-  { name: 'Lab Tests', href: '/lab', icon: BeakerIcon, roles: ['admin', 'lab_staff', 'doctor'] },
-  { name: 'Prescriptions', href: '/pharmacy', icon: DocumentTextIcon, roles: ['admin', 'pharmacist'] },
-  { name: 'Pharmacy', href: '/pharmacy/dispense', icon: ShoppingBagIcon, roles: ['admin', 'pharmacist'] },
-  { name: 'Admin', href: '/admin', icon: Cog6ToothIcon, roles: ['clinic_admin', 'super_admin'] },
+  { name: 'Doctor Workbench', href: '/doctor', icon: ClipboardDocumentListIcon, roles: [ 'doctor'] },
+  { name: 'Lab Tests', href: '/lab', icon: BeakerIcon, roles: [ 'lab_staff', 'doctor'] },
+  { name: 'Prescriptions', href: '/pharmacy', icon: DocumentTextIcon, roles: [ 'pharmacist'] },
+  { name: 'Pharmacy', href: '/pharmacy/dispense', icon: ShoppingBagIcon, roles: [ 'pharmacist'] },
+  { name: 'Admin', href: '/admin', icon: Cog6ToothIcon, roles: [ 'super_admin'] },
 ];
 
 const Sidebar: React.FC = () => {

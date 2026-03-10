@@ -68,7 +68,7 @@ function AppContent() {
             <Route
               path="/nurse/pre-doctor"
               element={
-                <ProtectedRoute allowedRoles={['admin', 'clinic_admin', 'nurse']}>
+                <ProtectedRoute allowedRoles={['admin', 'clinic_admin', 'nurse','front_desk']}>
                   <PreDoctorConsultation />
                 </ProtectedRoute>
               }
